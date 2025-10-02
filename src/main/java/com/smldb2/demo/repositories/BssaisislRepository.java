@@ -1,0 +1,13 @@
+package com.smldb2.demo.repositories;
+
+import com.smldb2.demo.Entity.Bssaisis;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+
+@Repository
+public interface BssaisislRepository extends JpaRepository<Bssaisis, String> {
+    List<Bssaisis> findByMatricule(String matricule);
+    List<Bssaisis> findByCodeSite(String codeSite);
+}
