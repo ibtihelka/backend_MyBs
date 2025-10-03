@@ -66,79 +66,108 @@ public class UserService {
         return Period.between(birth, now).getYears();
     }
 
-    /**
-     * Obtenir les statistiques globales
-     * SOLUTION TEMPORAIRE : Si vous n'avez pas de champ dateCreation
-     */
-    public UserStatsDTO getGlobalStats() {
-        System.out.println("📊 Début de getGlobalStats");
+    // ========== MÉTHODES POUR RÉCUPÉRER LES ENTREPRISES ==========
 
-        // Total des adhérents
+    /**
+     * Récupérer la liste de tous les codes d'entreprise
+     */
+    public List<String> getAllCompanyCodes() {
+        return userRepository.findAllDistinctCompanyCodes();
+    }
+
+    // ========== STATISTIQUES GLOBALES (TOUTES ENTREPRISES) ==========
+
+    public UserStatsDTO getGlobalStats() {
+        System.out.println("📊 Début de getGlobalStats (toutes entreprises)");
+
         long total = userRepository.count();
         System.out.println("✅ Total adhérents: " + total);
 
         long nouveaux = 0;
 
         try {
-            // TENTATIVE 1: Utiliser le champ dateCreation s'il existe
             LocalDate firstDayOfMonth = LocalDate.now().withDayOfMonth(1);
             Date startOfMonth = Date.from(firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant());
 
             nouveaux = userRepository.countByDateCreationAfter(startOfMonth);
-            System.out.println("✅ Nouveaux adhérents ce mois (via dateCreation): " + nouveaux);
+            System.out.println("✅ Nouveaux adhérents ce mois: " + nouveaux);
 
         } catch (Exception e) {
-            System.err.println("⚠️ Méthode countByDateCreationAfter non disponible: " + e.getMessage());
+            System.err.println("⚠️ Impossible de calculer les nouveaux adhérents: " + e.getMessage());
             nouveaux = 0;
-            System.out.println("⚠️ Impossible de calculer les nouveaux adhérents sans champ dateCreation");
-            System.out.println("💡 Ajoutez un champ 'dateCreation' à votre entité User pour activer cette fonctionnalité");
         }
 
-        System.out.println("📊 Stats avant création DTO - Total: " + total + ", Nouveaux: " + nouveaux);
-
-        // IMPORTANT: Vérifiez l'ordre des paramètres de votre constructeur UserStatsDTO
-        // Si le constructeur est UserStatsDTO(long nouveaux, long total), inversez les paramètres ici
         UserStatsDTO stats = new UserStatsDTO(total, nouveaux);
+        return stats;
+    }
 
-        System.out.println("📊 Stats après création DTO - getTotal(): " + stats.getTotal() + ", getNouveaux(): " + stats.getNouveaux());
+    public UserDetailedStatsDTO getDetailedStats() {
+        System.out.println("📊 Début de getDetailedStats (toutes entreprises)");
 
+        List<User> allUsers = userRepository.findAll();
+        return calculateDetailedStats(allUsers);
+    }
+
+    public Map<String, Long> getMonthlyEvolution() {
+        List<User> allUsers = userRepository.findAll();
+        return calculateMonthlyEvolution(allUsers);
+    }
+
+    // ========== STATISTIQUES PAR ENTREPRISE ==========
+
+    /**
+     * Statistiques globales pour une entreprise spécifique
+     */
+    public UserStatsDTO getGlobalStatsByCompany(String codeEntreprise) {
+        System.out.println("📊 Début de getGlobalStatsByCompany pour: " + codeEntreprise);
+
+        long total = userRepository.countByCodeEntreprise(codeEntreprise);
+        System.out.println("✅ Total adhérents entreprise " + codeEntreprise + ": " + total);
+
+        long nouveaux = 0;
+
+        try {
+            LocalDate firstDayOfMonth = LocalDate.now().withDayOfMonth(1);
+            Date startOfMonth = Date.from(firstDayOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant());
+
+            nouveaux = userRepository.countByCodeEntrepriseAndDateCreationAfter(codeEntreprise, startOfMonth);
+            System.out.println("✅ Nouveaux adhérents entreprise " + codeEntreprise + " ce mois: " + nouveaux);
+
+        } catch (Exception e) {
+            System.err.println("⚠️ Impossible de calculer les nouveaux adhérents: " + e.getMessage());
+            nouveaux = 0;
+        }
+
+        UserStatsDTO stats = new UserStatsDTO(total, nouveaux);
         return stats;
     }
 
     /**
-     * VERSION ALTERNATIVE : Si vous avez un autre champ de date
-     * Par exemple, si vous utilisez un champ existant comme 'datePieceIdentite' ou autre
+     * Statistiques détaillées pour une entreprise spécifique
      */
-    public UserStatsDTO getGlobalStatsAlternative() {
-        long total = userRepository.count();
+    public UserDetailedStatsDTO getDetailedStatsByCompany(String codeEntreprise) {
+        System.out.println("📊 Début de getDetailedStatsByCompany pour: " + codeEntreprise);
 
-        // Si vous voulez estimer les nouveaux adhérents basés sur un autre critère
-        // Par exemple, les personnes de moins de 30 ans, ou basé sur persoId, etc.
-        long nouveaux = 0;
+        List<User> companyUsers = userRepository.findByCodeEntreprise(codeEntreprise);
+        System.out.println("✅ Nombre d'utilisateurs de l'entreprise " + codeEntreprise + ": " + companyUsers.size());
 
-        List<User> allUsers = userRepository.findAll();
-        LocalDate firstDayOfMonth = LocalDate.now().withDayOfMonth(1);
-
-        for (User user : allUsers) {
-            // EXEMPLE: Si votre persoId contient une date ou un timestamp
-            // Adaptez cette logique selon votre structure de données
-            // Par exemple: persoId = "2024001", "2024002", etc.
-
-            // Pour l'instant, on retourne 0 car on ne peut pas le déterminer
-        }
-
-        return new UserStatsDTO(total, nouveaux);
+        return calculateDetailedStats(companyUsers);
     }
 
     /**
-     * Obtenir les statistiques détaillées (par sexe et situation familiale)
+     * Évolution mensuelle pour une entreprise spécifique
      */
-    public UserDetailedStatsDTO getDetailedStats() {
-        System.out.println("📊 Début de getDetailedStats");
+    public Map<String, Long> getMonthlyEvolutionByCompany(String codeEntreprise) {
+        List<User> companyUsers = userRepository.findByCodeEntreprise(codeEntreprise);
+        return calculateMonthlyEvolution(companyUsers);
+    }
 
-        List<User> allUsers = userRepository.findAll();
-        System.out.println("✅ Nombre d'utilisateurs récupérés: " + allUsers.size());
+    // ========== MÉTHODES PRIVÉES COMMUNES ==========
 
+    /**
+     * Calcul des statistiques détaillées à partir d'une liste d'utilisateurs
+     */
+    private UserDetailedStatsDTO calculateDetailedStats(List<User> users) {
         Map<String, Long> repartitionParSexe = new HashMap<>();
         repartitionParSexe.put("M", 0L);
         repartitionParSexe.put("F", 0L);
@@ -146,7 +175,7 @@ public class UserService {
 
         Map<String, Long> repartitionParSituationFamiliale = new HashMap<>();
 
-        for (User user : allUsers) {
+        for (User user : users) {
             // Compter par sexe
             String sexe = user.getSexe();
             if (sexe != null && !sexe.isEmpty()) {
@@ -191,10 +220,10 @@ public class UserService {
         return stats;
     }
 
-
-
-    public Map<String, Long> getMonthlyEvolution() {
-        List<User> allUsers = userRepository.findAll();
+    /**
+     * Calcul de l'évolution mensuelle à partir d'une liste d'utilisateurs
+     */
+    private Map<String, Long> calculateMonthlyEvolution(List<User> users) {
         Map<String, Long> monthlyCount = new TreeMap<>();
 
         LocalDate now = LocalDate.now();
@@ -208,7 +237,7 @@ public class UserService {
             Date startDate = Date.from(startOfMonth.atStartOfDay(ZoneId.systemDefault()).toInstant());
             Date endDate = Date.from(endOfMonth.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toInstant());
 
-            long count = allUsers.stream()
+            long count = users.stream()
                     .filter(u -> u.getDateCreation() != null)
                     .filter(u -> !u.getDateCreation().before(startDate) && !u.getDateCreation().after(endDate))
                     .count();

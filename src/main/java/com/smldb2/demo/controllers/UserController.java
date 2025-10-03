@@ -25,7 +25,8 @@ public class UserController {
     @Autowired
     private AuthService authService;
 
-    // Endpoint de connexion unifié
+    // ========== ENDPOINT LOGIN ==========
+
     @PostMapping("/login")
     public ResponseEntity<UnifiedLoginResponse> login(@RequestBody User loginRequest) {
         UnifiedLoginResponse response = authService.login(
@@ -40,19 +41,8 @@ public class UserController {
         }
     }
 
+    // ========== ENDPOINTS UTILISATEURS ==========
 
-
-
-
-    // Méthode helper pour calculer les nouveaux utilisateurs du mois
-    private int calculateNewUsersThisMonth(List<User> users) {
-        // Implémentation simple - à adapter selon votre logique métier
-        // Par exemple, si vous avez un champ dateInscription dans User
-        // Sinon, retourner 0 ou une autre logique
-        return 0; // À modifier selon vos besoins
-    }
-
-    // Endpoints existants
     @GetMapping
     public ResponseEntity<List<User>> getAllUsers() {
         List<User> users = userService.getAllUsers();
@@ -85,10 +75,27 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
-
+    // ========== ENDPOINT POUR RÉCUPÉRER LES ENTREPRISES ==========
 
     /**
-     * Obtenir les statistiques globales des adhérents
+     * Récupérer la liste de tous les codes d'entreprise
+     * GET /api/users/companies
+     */
+    @GetMapping("/companies")
+    public ResponseEntity<List<String>> getAllCompanies() {
+        try {
+            List<String> companies = userService.getAllCompanyCodes();
+            return ResponseEntity.ok(companies);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur dans getAllCompanies: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok(List.of());
+        }
+    }
+
+    // ========== STATISTIQUES GLOBALES (TOUTES ENTREPRISES) ==========
+
+    /**
      * GET /api/users/stats/global
      */
     @GetMapping("/stats/global")
@@ -99,13 +106,11 @@ public class UserController {
         } catch (Exception e) {
             System.err.println("❌ Erreur dans getGlobalStats: " + e.getMessage());
             e.printStackTrace();
-            // Retourner des valeurs par défaut en cas d'erreur
             return ResponseEntity.ok(new UserStatsDTO(0L, 0L));
         }
     }
 
     /**
-     * Obtenir les statistiques détaillées des adhérents
      * GET /api/users/stats/detailed
      */
     @GetMapping("/stats/detailed")
@@ -116,7 +121,6 @@ public class UserController {
         } catch (Exception e) {
             System.err.println("❌ Erreur dans getDetailedStats: " + e.getMessage());
             e.printStackTrace();
-            // Retourner des stats vides en cas d'erreur
             UserDetailedStatsDTO emptyStats = new UserDetailedStatsDTO();
             emptyStats.setRepartitionParSexe(new HashMap<>());
             emptyStats.setRepartitionParSituationFamiliale(new HashMap<>());
@@ -125,9 +129,72 @@ public class UserController {
     }
 
     /**
-     * Test endpoint pour vérifier que le controller fonctionne
-     * GET /api/users/stats/test
+     * GET /api/users/stats/evolution
      */
+    @GetMapping("/stats/evolution")
+    public ResponseEntity<Map<String, Long>> getEvolutionStats() {
+        Map<String, Long> evolution = userService.getMonthlyEvolution();
+        return ResponseEntity.ok(evolution);
+    }
+
+    // ========== STATISTIQUES PAR ENTREPRISE ==========
+
+    /**
+     * Statistiques globales pour une entreprise spécifique
+     * GET /api/users/stats/global/company/{codeEntreprise}
+     * Exemple: GET /api/users/stats/global/company/SO000006
+     */
+    @GetMapping("/stats/global/company/{codeEntreprise}")
+    public ResponseEntity<UserStatsDTO> getGlobalStatsByCompany(@PathVariable String codeEntreprise) {
+        try {
+            UserStatsDTO stats = userService.getGlobalStatsByCompany(codeEntreprise);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur dans getGlobalStatsByCompany: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok(new UserStatsDTO(0L, 0L));
+        }
+    }
+
+    /**
+     * Statistiques détaillées pour une entreprise spécifique
+     * GET /api/users/stats/detailed/company/{codeEntreprise}
+     * Exemple: GET /api/users/stats/detailed/company/SO000006
+     */
+    @GetMapping("/stats/detailed/company/{codeEntreprise}")
+    public ResponseEntity<UserDetailedStatsDTO> getDetailedStatsByCompany(@PathVariable String codeEntreprise) {
+        try {
+            UserDetailedStatsDTO stats = userService.getDetailedStatsByCompany(codeEntreprise);
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur dans getDetailedStatsByCompany: " + e.getMessage());
+            e.printStackTrace();
+            UserDetailedStatsDTO emptyStats = new UserDetailedStatsDTO();
+            emptyStats.setRepartitionParSexe(new HashMap<>());
+            emptyStats.setRepartitionParSituationFamiliale(new HashMap<>());
+            return ResponseEntity.ok(emptyStats);
+        }
+    }
+
+    /**
+     * Évolution mensuelle pour une entreprise spécifique
+     * GET /api/users/stats/evolution/company/{codeEntreprise}
+     * Exemple: GET /api/users/stats/evolution/company/SO000006
+     */
+    @GetMapping("/stats/evolution/company/{codeEntreprise}")
+    public ResponseEntity<Map<String, Long>> getEvolutionStatsByCompany(@PathVariable String codeEntreprise) {
+        try {
+            Map<String, Long> evolution = userService.getMonthlyEvolutionByCompany(codeEntreprise);
+            return ResponseEntity.ok(evolution);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur dans getEvolutionStatsByCompany: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.ok(new HashMap<>());
+        }
+    }
+
+    // ========== TEST ENDPOINT ==========
+
     @GetMapping("/stats/test")
     public ResponseEntity<Map<String, Object>> testEndpoint() {
         Map<String, Object> response = new HashMap<>();
@@ -135,14 +202,5 @@ public class UserController {
         response.put("message", "User stats controller is working");
         response.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(response);
-    }
-
-
-
-    // Dans UserController.java
-    @GetMapping("/stats/evolution")
-    public ResponseEntity<Map<String, Long>> getEvolutionStats() {
-        Map<String, Long> evolution = userService.getMonthlyEvolution();
-        return ResponseEntity.ok(evolution);
     }
 }
