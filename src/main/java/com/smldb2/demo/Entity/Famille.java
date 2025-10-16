@@ -20,7 +20,7 @@ public class Famille {
     @Convert(converter = TypePrestataireConverter.class)
     private TypePrestataire typPrestataire;
 
-    @Column(name = "PERSO_ID")
+    @Column(name = "PERSO_ID", insertable = false, updatable = false)
     private String persoId;
 
     @Column(name = "DAT_NAIS")
@@ -30,10 +30,11 @@ public class Famille {
     private String sexe;
 
     // Relation avec User
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "PERSO_ID", insertable = false, updatable = false)
-    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "PERSO_ID")
+    @JsonBackReference("user-familles")
     private User user;
+
 
 
 

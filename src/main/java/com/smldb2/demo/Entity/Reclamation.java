@@ -1,4 +1,5 @@
 package com.smldb2.demo.Entity;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,8 +21,11 @@ public class Reclamation {
     @Column(name = "REF_BS_PHYS")
     private String refBsPhys;
 
-    @Column(name = "PERSO_ID")
+
+
+    @Column(name = "PERSO_ID", insertable = false, updatable = false)
     private String persoId;
+
 
     @Column(name = "TitreReclamation")
     private String titreReclamation;
@@ -39,8 +43,9 @@ public class Reclamation {
     private Date dateCreation;
 
     // Relation avec User
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PERSO_ID", insertable = false, updatable = false)
+    @ManyToOne
+    @JoinColumn(name = "PERSO_ID")
+    @JsonBackReference("user-reclamations")
     private User user;
 
     // Constructeurs

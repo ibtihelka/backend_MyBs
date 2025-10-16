@@ -24,8 +24,8 @@ public class Suggestion {
     @JsonProperty("texteSuggestion")
     private String texteSuggestion;
 
-    @Column(name = "perso_id") // EXACT comme dans la base
-    @JsonProperty("persoId")
+
+    @Column(name = "PERSO_ID", insertable = false, updatable = false)
     private String persoId;
 
     @Column(name = "exported") // EXACT comme dans la base
@@ -37,10 +37,11 @@ public class Suggestion {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Timestamp dateCreation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "perso_id", referencedColumnName = "PERSO_ID", insertable = false, updatable = false)
-    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "PERSO_ID")
+    @JsonBackReference("user-suggestions")
     private User user;
+
 
     // Constructeurs
     public Suggestion() {}

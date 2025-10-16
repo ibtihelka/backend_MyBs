@@ -19,8 +19,10 @@ public class Remboursement {
     @Column(name = "REF_BS_PHYS")
     private String refBsPhys;
 
-    @Column(name = "PERSO_ID")
-    private String persoId;
+
+
+    @Column(name = "PERSO_ID", insertable = false, updatable = false)
+    private String persoId;  // simple lecture, pas de doublon
 
     @Column(name = "NOM_PREN_PREST")
     private String nomPrenPrest;
@@ -58,10 +60,15 @@ public class Remboursement {
 
 
     // Relation avec User
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "PERSO_ID", insertable = false, updatable = false)
-    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "PERSO_ID")
+    @JsonBackReference("user-remboursements")
     private User user;
+
+
+
+
+
 
     // Constructeurs
     public Remboursement() {}

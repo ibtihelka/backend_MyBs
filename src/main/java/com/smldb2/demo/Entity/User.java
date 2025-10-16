@@ -90,19 +90,20 @@ public class User {
 
     // Relations
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonManagedReference("user-remboursements")
     private List<Remboursement> remboursements = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("user-suggestions")
     private List<Suggestion> suggestions = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("user-reclamations")
     private List<Reclamation> reclamations = new ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonManagedReference
+    @JsonManagedReference("user-familles")
     private List<Famille> familles = new ArrayList<>();
-
 
 
     // Constructeurs

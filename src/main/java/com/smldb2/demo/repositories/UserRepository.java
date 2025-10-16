@@ -20,24 +20,14 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByCin(String cin);
     long countByDateCreationAfter(Date date);
 
-    // ========== NOUVELLES MÉTHODES POUR FILTRER PAR ENTREPRISE ==========
+    // ========== MÉTHODES POUR FILTRER PAR ENTREPRISE ==========
 
-    /**
-     * Trouver tous les utilisateurs d'une entreprise
-     * Utilise SUBSTRING pour extraire les 8 premiers caractères du persoId
-     */
     @Query("SELECT u FROM User u WHERE SUBSTRING(u.persoId, 1, 8) = :codeEntreprise")
     List<User> findByCodeEntreprise(@Param("codeEntreprise") String codeEntreprise);
 
-    /**
-     * Compter le nombre total d'utilisateurs d'une entreprise
-     */
     @Query("SELECT COUNT(u) FROM User u WHERE SUBSTRING(u.persoId, 1, 8) = :codeEntreprise")
     long countByCodeEntreprise(@Param("codeEntreprise") String codeEntreprise);
 
-    /**
-     * Compter les nouveaux utilisateurs d'une entreprise depuis une date
-     */
     @Query("SELECT COUNT(u) FROM User u WHERE SUBSTRING(u.persoId, 1, 8) = :codeEntreprise " +
             "AND u.dateCreation > :startDate")
     long countByCodeEntrepriseAndDateCreationAfter(
@@ -45,9 +35,28 @@ public interface UserRepository extends JpaRepository<User, String> {
             @Param("startDate") Date startDate
     );
 
-    /**
-     * Récupérer tous les codes d'entreprise distincts
-     */
     @Query("SELECT DISTINCT SUBSTRING(u.persoId, 1, 8) FROM User u ORDER BY SUBSTRING(u.persoId, 1, 8)")
     List<String> findAllDistinctCompanyCodes();
+
+    // ========== MÉTHODES POUR RIB ET CONTACT ==========
+
+    /**
+     * Récupérer le RIB d'un utilisateur
+     */
+    @Query("SELECT u.rib FROM User u WHERE u.persoId = :persoId")
+    String findRibByPersoId(@Param("persoId") String persoId);
+
+    /**
+     * Récupérer le contact d'un utilisateur
+     */
+    @Query("SELECT u.contact FROM User u WHERE u.persoId = :persoId")
+    String findContactByPersoId(@Param("persoId") String persoId);
+
+    // ========== MÉTHODES DE RECHERCHE ==========
+
+    Optional<User> findByPersoId(String persoId);
+
+    boolean existsByPersoId(String persoId);
+
+    boolean existsByEmail(String email);
 }

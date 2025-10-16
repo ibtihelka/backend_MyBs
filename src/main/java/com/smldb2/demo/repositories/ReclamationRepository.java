@@ -7,11 +7,18 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-// 10. ReclamationRepository
 @Repository
-public interface ReclamationRepository extends JpaRepository<Reclamation, Integer> {
-    List<Reclamation> findByPersoId(String persoId);
-    List<Reclamation> findByExported(String exported);
-    List<Reclamation> findByRefBsPhys(String refBsPhys);
-}
+public interface ReclamationRepository extends JpaRepository<Reclamation, Long> {
 
+    // Trouver toutes les réclamations d'un utilisateur
+    List<Reclamation> findByPersoId(String persoId);
+
+    // Trouver les réclamations par refBsPhys
+    List<Reclamation> findByRefBsPhys(String refBsPhys);
+
+    // Vérifier si une réclamation existe déjà pour un remboursement
+    boolean existsByRefBsPhys(String refBsPhys);
+
+    // Trouver les réclamations d'un utilisateur par refBsPhys
+    List<Reclamation> findByPersoIdAndRefBsPhys(String persoId, String refBsPhys);
+}

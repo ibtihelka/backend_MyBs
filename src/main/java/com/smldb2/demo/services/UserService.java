@@ -68,14 +68,11 @@ public class UserService {
 
     // ========== MÉTHODES POUR RÉCUPÉRER LES ENTREPRISES ==========
 
-    /**
-     * Récupérer la liste de tous les codes d'entreprise
-     */
     public List<String> getAllCompanyCodes() {
         return userRepository.findAllDistinctCompanyCodes();
     }
 
-    // ========== STATISTIQUES GLOBALES (TOUTES ENTREPRISES) ==========
+    // ========== STATISTIQUES GLOBALES ==========
 
     public UserStatsDTO getGlobalStats() {
         System.out.println("📊 Début de getGlobalStats (toutes entreprises)");
@@ -115,9 +112,6 @@ public class UserService {
 
     // ========== STATISTIQUES PAR ENTREPRISE ==========
 
-    /**
-     * Statistiques globales pour une entreprise spécifique
-     */
     public UserStatsDTO getGlobalStatsByCompany(String codeEntreprise) {
         System.out.println("📊 Début de getGlobalStatsByCompany pour: " + codeEntreprise);
 
@@ -142,9 +136,6 @@ public class UserService {
         return stats;
     }
 
-    /**
-     * Statistiques détaillées pour une entreprise spécifique
-     */
     public UserDetailedStatsDTO getDetailedStatsByCompany(String codeEntreprise) {
         System.out.println("📊 Début de getDetailedStatsByCompany pour: " + codeEntreprise);
 
@@ -154,9 +145,6 @@ public class UserService {
         return calculateDetailedStats(companyUsers);
     }
 
-    /**
-     * Évolution mensuelle pour une entreprise spécifique
-     */
     public Map<String, Long> getMonthlyEvolutionByCompany(String codeEntreprise) {
         List<User> companyUsers = userRepository.findByCodeEntreprise(codeEntreprise);
         return calculateMonthlyEvolution(companyUsers);
@@ -164,9 +152,6 @@ public class UserService {
 
     // ========== MÉTHODES PRIVÉES COMMUNES ==========
 
-    /**
-     * Calcul des statistiques détaillées à partir d'une liste d'utilisateurs
-     */
     private UserDetailedStatsDTO calculateDetailedStats(List<User> users) {
         Map<String, Long> repartitionParSexe = new HashMap<>();
         repartitionParSexe.put("M", 0L);
@@ -220,9 +205,6 @@ public class UserService {
         return stats;
     }
 
-    /**
-     * Calcul de l'évolution mensuelle à partir d'une liste d'utilisateurs
-     */
     private Map<String, Long> calculateMonthlyEvolution(List<User> users) {
         Map<String, Long> monthlyCount = new TreeMap<>();
 
@@ -246,5 +228,77 @@ public class UserService {
         }
 
         return monthlyCount;
+    }
+
+    // ========== NOUVELLES MÉTHODES POUR RIB ET CONTACT ==========
+
+    /**
+     * Récupérer le RIB d'un utilisateur par son persoId
+     */
+    public String getRibByPersoId(String persoId) {
+        try {
+            return userRepository.findRibByPersoId(persoId);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la récupération du RIB pour " + persoId + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Récupérer le contact d'un utilisateur par son persoId
+     */
+    public String getContactByPersoId(String persoId) {
+        try {
+            return userRepository.findContactByPersoId(persoId);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la récupération du contact pour " + persoId + ": " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Modifier le RIB d'un utilisateur
+     */
+    public boolean updateRib(String persoId, String newRib) {
+        try {
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                user.setRib(newRib);
+                userRepository.save(user);
+                System.out.println("✅ RIB mis à jour avec succès pour " + persoId);
+                return true;
+            } else {
+                System.err.println("❌ Utilisateur non trouvé: " + persoId);
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la mise à jour du RIB pour " + persoId + ": " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Modifier le contact d'un utilisateur
+     */
+    public boolean updateContact(String persoId, String newContact) {
+        try {
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+
+            if (userOpt.isPresent()) {
+                User user = userOpt.get();
+                user.setContact(newContact);
+                userRepository.save(user);
+                System.out.println("✅ Contact mis à jour avec succès pour " + persoId);
+                return true;
+            } else {
+                System.err.println("❌ Utilisateur non trouvé: " + persoId);
+                return false;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la mise à jour du contact pour " + persoId + ": " + e.getMessage());
+            return false;
+        }
     }
 }

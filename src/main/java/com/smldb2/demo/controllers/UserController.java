@@ -77,10 +77,6 @@ public class UserController {
 
     // ========== ENDPOINT POUR RÉCUPÉRER LES ENTREPRISES ==========
 
-    /**
-     * Récupérer la liste de tous les codes d'entreprise
-     * GET /api/users/companies
-     */
     @GetMapping("/companies")
     public ResponseEntity<List<String>> getAllCompanies() {
         try {
@@ -93,11 +89,8 @@ public class UserController {
         }
     }
 
-    // ========== STATISTIQUES GLOBALES (TOUTES ENTREPRISES) ==========
+    // ========== STATISTIQUES GLOBALES ==========
 
-    /**
-     * GET /api/users/stats/global
-     */
     @GetMapping("/stats/global")
     public ResponseEntity<UserStatsDTO> getGlobalStats() {
         try {
@@ -110,9 +103,6 @@ public class UserController {
         }
     }
 
-    /**
-     * GET /api/users/stats/detailed
-     */
     @GetMapping("/stats/detailed")
     public ResponseEntity<UserDetailedStatsDTO> getDetailedStats() {
         try {
@@ -128,9 +118,6 @@ public class UserController {
         }
     }
 
-    /**
-     * GET /api/users/stats/evolution
-     */
     @GetMapping("/stats/evolution")
     public ResponseEntity<Map<String, Long>> getEvolutionStats() {
         Map<String, Long> evolution = userService.getMonthlyEvolution();
@@ -139,11 +126,6 @@ public class UserController {
 
     // ========== STATISTIQUES PAR ENTREPRISE ==========
 
-    /**
-     * Statistiques globales pour une entreprise spécifique
-     * GET /api/users/stats/global/company/{codeEntreprise}
-     * Exemple: GET /api/users/stats/global/company/SO000006
-     */
     @GetMapping("/stats/global/company/{codeEntreprise}")
     public ResponseEntity<UserStatsDTO> getGlobalStatsByCompany(@PathVariable String codeEntreprise) {
         try {
@@ -156,11 +138,6 @@ public class UserController {
         }
     }
 
-    /**
-     * Statistiques détaillées pour une entreprise spécifique
-     * GET /api/users/stats/detailed/company/{codeEntreprise}
-     * Exemple: GET /api/users/stats/detailed/company/SO000006
-     */
     @GetMapping("/stats/detailed/company/{codeEntreprise}")
     public ResponseEntity<UserDetailedStatsDTO> getDetailedStatsByCompany(@PathVariable String codeEntreprise) {
         try {
@@ -176,11 +153,6 @@ public class UserController {
         }
     }
 
-    /**
-     * Évolution mensuelle pour une entreprise spécifique
-     * GET /api/users/stats/evolution/company/{codeEntreprise}
-     * Exemple: GET /api/users/stats/evolution/company/SO000006
-     */
     @GetMapping("/stats/evolution/company/{codeEntreprise}")
     public ResponseEntity<Map<String, Long>> getEvolutionStatsByCompany(@PathVariable String codeEntreprise) {
         try {
@@ -190,6 +162,132 @@ public class UserController {
             System.err.println("❌ Erreur dans getEvolutionStatsByCompany: " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.ok(new HashMap<>());
+        }
+    }
+
+    // ========== ENDPOINTS RIB ==========
+
+    /**
+     * Récupérer le RIB d'un utilisateur
+     * GET /api/users/{persoId}/rib
+     */
+    @GetMapping("/{persoId}/rib")
+    public ResponseEntity<Map<String, String>> getRibByPersoId(@PathVariable String persoId) {
+        String rib = userService.getRibByPersoId(persoId);
+        if (rib != null) {
+            Map<String, String> response = new HashMap<>();
+            response.put("persoId", persoId);
+            response.put("rib", rib);
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Modifier le RIB d'un utilisateur
+     * PUT /api/users/{persoId}/rib
+     * Body: { "rib": "12345678901234567890" }
+     */
+    @PutMapping("/{persoId}/rib")
+    public ResponseEntity<Map<String, Object>> updateRib(
+            @PathVariable String persoId,
+            @RequestBody Map<String, String> request) {
+
+        String newRib = request.get("rib");
+
+        if (newRib == null || newRib.trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Le RIB ne peut pas être vide");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        // Validation du format du RIB (20 chiffres)
+        String cleanRib = newRib.replaceAll("\\s+", "");
+        if (!cleanRib.matches("\\d{20}")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Le RIB doit contenir exactement 20 chiffres");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        boolean success = userService.updateRib(persoId, cleanRib);
+
+        Map<String, Object> response = new HashMap<>();
+        if (success) {
+            response.put("success", true);
+            response.put("message", "RIB mis à jour avec succès");
+            response.put("persoId", persoId);
+            response.put("rib", cleanRib);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("success", false);
+            response.put("message", "Impossible de mettre à jour le RIB");
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // ========== ENDPOINTS CONTACT ==========
+
+    /**
+     * Récupérer le contact d'un utilisateur
+     * GET /api/users/{persoId}/contact
+     */
+    @GetMapping("/{persoId}/contact")
+    public ResponseEntity<Map<String, String>> getContactByPersoId(@PathVariable String persoId) {
+        String contact = userService.getContactByPersoId(persoId);
+        if (contact != null) {
+            Map<String, String> response = new HashMap<>();
+            response.put("persoId", persoId);
+            response.put("contact", contact);
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Modifier le contact d'un utilisateur
+     * PUT /api/users/{persoId}/contact
+     * Body: { "contact": "+216 12 345 678" }
+     */
+    @PutMapping("/{persoId}/contact")
+    public ResponseEntity<Map<String, Object>> updateContact(
+            @PathVariable String persoId,
+            @RequestBody Map<String, String> request) {
+
+        String newContact = request.get("contact");
+
+        if (newContact == null || newContact.trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Le contact ne peut pas être vide");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        // Validation du format du contact (numéro de téléphone)
+        String cleanContact = newContact.replaceAll("\\s+", "");
+        if (!cleanContact.matches("^\\+?\\d{8,15}$")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Format de numéro de téléphone invalide");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        boolean success = userService.updateContact(persoId, newContact);
+
+        Map<String, Object> response = new HashMap<>();
+        if (success) {
+            response.put("success", true);
+            response.put("message", "Contact mis à jour avec succès");
+            response.put("persoId", persoId);
+            response.put("contact", newContact);
+            return ResponseEntity.ok(response);
+        } else {
+            response.put("success", false);
+            response.put("message", "Impossible de mettre à jour le contact");
+            return ResponseEntity.status(500).body(response);
         }
     }
 
