@@ -301,4 +301,16 @@ public class UserService {
             return false;
         }
     }
+
+
+
+    public List<User> getUsersByCompany(String codeEntreprise) {
+        try {
+            return userRepository.findByCodeEntreprise(codeEntreprise);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la récupération des utilisateurs de l'entreprise " + codeEntreprise + ": " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
 }

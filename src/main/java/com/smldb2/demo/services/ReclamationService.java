@@ -59,7 +59,7 @@ public class ReclamationService {
         reclamation.setPersoId(reclamationDTO.getPersoId());
         reclamation.setTitreReclamation(reclamationDTO.getTitreReclamation());
         reclamation.setTexteReclamation(reclamationDTO.getTexteReclamation());
-        reclamation.setDateCreation(new Date());
+        reclamation.setDateCreation(new Date()); // ✅ Utiliser new Date() pour obtenir l'heure actuelle
         reclamation.setExported("N"); // Non exporté par défaut
         reclamation.setUser(userOpt.get());
 

@@ -2,22 +2,26 @@ package com.smldb2.demo.DTO;
 
 import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.Entity.UsersAdmin;
+import com.smldb2.demo.Entity.Prestataire;
 
 public class UnifiedLoginResponse {
     private String message;
     private boolean success;
-    private String userType; // "USER" ou "ADMIN"
+    private String userType; // "USER", "ADMIN" ou "PRESTATAIRE"
     private User user;
     private UsersAdmin admin;
+    private Prestataire prestataire;
 
     public UnifiedLoginResponse() {}
 
-    public UnifiedLoginResponse(String message, boolean success, String userType, User user, UsersAdmin admin) {
+    public UnifiedLoginResponse(String message, boolean success, String userType,
+                                User user, UsersAdmin admin, Prestataire prestataire) {
         this.message = message;
         this.success = success;
         this.userType = userType;
         this.user = user;
         this.admin = admin;
+        this.prestataire = prestataire;
     }
 
     // Getters et Setters
@@ -35,4 +39,7 @@ public class UnifiedLoginResponse {
 
     public UsersAdmin getAdmin() { return admin; }
     public void setAdmin(UsersAdmin admin) { this.admin = admin; }
+
+    public Prestataire getPrestataire() { return prestataire; }
+    public void setPrestataire(Prestataire prestataire) { this.prestataire = prestataire; }
 }

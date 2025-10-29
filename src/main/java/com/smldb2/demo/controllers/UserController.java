@@ -3,21 +3,28 @@ package com.smldb2.demo.controllers;
 import com.smldb2.demo.DTO.UnifiedLoginResponse;
 import com.smldb2.demo.DTO.UserStatsDTO;
 import com.smldb2.demo.DTO.UserDetailedStatsDTO;
+import com.smldb2.demo.Entity.Famille;
+import com.smldb2.demo.Entity.TypePrestataire;
 import com.smldb2.demo.Entity.User;
+import com.smldb2.demo.repositories.FamilleRepository;
 import com.smldb2.demo.services.AuthService;
 import com.smldb2.demo.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin(origins = "**")
 public class UserController {
+    @Autowired
+    private FamilleRepository familleRepository;
 
     @Autowired
     private UserService userService;
@@ -301,4 +308,110 @@ public class UserController {
         response.put("timestamp", System.currentTimeMillis());
         return ResponseEntity.ok(response);
     }
+
+
+// ========== ENDPOINTS POUR LES PRESTATAIRES ==========
+
+    /**
+     * Récupère le nombre total de prestataires (toutes entreprises)
+     */
+    @GetMapping("/stats/prestataires/total")
+    public ResponseEntity<Long> getTotalPrestataires() {
+        try {
+            long total = familleRepository.count();
+            return ResponseEntity.ok(total);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
+        }
+    }
+
+    /**
+     * Récupère le nombre total de prestataires pour une entreprise
+     */
+    @GetMapping("/stats/prestataires/total/company/{codeEntreprise}")
+    public ResponseEntity<Long> getTotalPrestatairesByCompany(
+            @PathVariable String codeEntreprise) {
+        try {
+            // Récupérer tous les users de cette entreprise
+            List<User> users = userService.getUsersByCompany(codeEntreprise);
+
+            // Extraire les persoId
+            List<String> persoIds = users.stream()
+                    .map(User::getPersoId)
+                    .collect(Collectors.toList());
+
+            // Compter les prestataires liés à ces persoId
+            long total = familleRepository.countByPersoIdIn(persoIds);
+
+            return ResponseEntity.ok(total);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(0L);
+        }
+    }
+
+    /**
+     * Récupère les statistiques détaillées des prestataires (toutes entreprises)
+     */
+    @GetMapping("/stats/prestataires/detailed")
+    public ResponseEntity<Map<String, Object>> getDetailedPrestataireStats() {
+        try {
+            List<Famille> allPrestataires = familleRepository.findAll();
+
+            long conjoints = allPrestataires.stream()
+                    .filter(f -> TypePrestataire.CONJOINT.equals(f.getTypPrestataire()))
+                    .count();
+
+            long enfants = allPrestataires.stream()
+                    .filter(f -> TypePrestataire.ENFANT.equals(f.getTypPrestataire()))
+                    .count();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("total", allPrestataires.size());
+            result.put("conjoints", conjoints);
+            result.put("enfants", enfants);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new HashMap<>());
+        }
+    }
+
+    /**
+     * Récupère les statistiques détaillées des prestataires par entreprise
+     */
+    @GetMapping("/stats/prestataires/detailed/company/{codeEntreprise}")
+    public ResponseEntity<Map<String, Object>> getDetailedPrestataireStatsByCompany(
+            @PathVariable String codeEntreprise) {
+        try {
+            List<User> users = userService.getUsersByCompany(codeEntreprise);
+            List<String> persoIds = users.stream()
+                    .map(User::getPersoId)
+                    .collect(Collectors.toList());
+
+            List<Famille> prestataires = familleRepository.findByPersoIdIn(persoIds);
+
+            long conjoints = prestataires.stream()
+                    .filter(f -> TypePrestataire.CONJOINT.equals(f.getTypPrestataire()))
+                    .count();
+
+            long enfants = prestataires.stream()
+                    .filter(f -> TypePrestataire.ENFANT.equals(f.getTypPrestataire()))
+                    .count();
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("total", prestataires.size());
+            result.put("conjoints", conjoints);
+            result.put("enfants", enfants);
+
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new HashMap<>());
+        }
+    }
+
+
 }

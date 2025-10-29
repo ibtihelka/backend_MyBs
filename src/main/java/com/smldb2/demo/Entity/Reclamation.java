@@ -30,16 +30,19 @@ public class Reclamation {
     @Column(name = "TitreReclamation")
     private String titreReclamation;
 
-    @Column(name = "TexteReclamation")
+    @Column(name = "TexteReclamation" , columnDefinition = "TEXT")
+
     private String texteReclamation;
 
-    @Column(name = "ReponseRec")
+    @Column(name = "ReponseRec", columnDefinition = "TEXT")
+
     private String responseRec;
 
     @Column(name = "exported")
     private String exported;
 
     @Column(name = "dateCreation")
+    @Temporal(TemporalType.TIMESTAMP)
     private Date dateCreation;
 
     // Relation avec User
