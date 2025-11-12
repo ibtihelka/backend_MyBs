@@ -11,5 +11,6 @@ public interface ClientRepository extends JpaRepository<Client, String> {
 
 
     Optional<Client> findByCodeClt(String codeClt);
+
 }
 

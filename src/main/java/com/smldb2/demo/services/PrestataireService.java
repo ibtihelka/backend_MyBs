@@ -67,6 +67,7 @@ public class PrestataireService {
             if (prestataire.getEmail() != null) p.setEmail(prestataire.getEmail());
             if (prestataire.getContact() != null) p.setContact(prestataire.getContact());
             if (prestataire.getAdresse() != null) p.setAdresse(prestataire.getAdresse());
+            if (prestataire.getSexe() != null) p.setSexe(prestataire.getSexe());
             if (prestataire.getPersoPassed() != null) {
                 p.setPersoPassed(md5(prestataire.getPersoPassed()));
             }

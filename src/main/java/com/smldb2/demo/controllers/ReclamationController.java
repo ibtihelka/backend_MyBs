@@ -1,9 +1,7 @@
 package com.smldb2.demo.controllers;
 
-
 import com.smldb2.demo.DTO.ReclamationDTO;
 import com.smldb2.demo.Entity.Remboursement;
-
 import com.smldb2.demo.services.ReclamationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,8 +32,32 @@ public class ReclamationController {
         } catch (RuntimeException e) {
             Map<String, String> error = new HashMap<>();
             error.put("error", e.getMessage());
+
+            // ✅ Si c'est une erreur de limite, retourner un code 403 (Forbidden)
+            if (e.getMessage().startsWith("LIMITE_ATTEINTE:")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+            }
+
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
+    }
+
+    /**
+     * ✅ NOUVEAU ENDPOINT : Vérifier le nombre de réclamations pour un remboursement
+     * GET /api/reclamations/count/{refBsPhys}
+     */
+    @GetMapping("/count/{refBsPhys}")
+    public ResponseEntity<Map<String, Object>> getReclamationCount(@PathVariable String refBsPhys) {
+        int count = reclamationService.countReclamationsByRefBsPhys(refBsPhys);
+        boolean canCreate = reclamationService.canCreateReclamation(refBsPhys);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("count", count);
+        response.put("maxAllowed", 2);
+        response.put("canCreate", canCreate);
+        response.put("remaining", Math.max(0, 2 - count));
+
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -139,7 +161,6 @@ public class ReclamationController {
      */
     @GetMapping
     public ResponseEntity<List<ReclamationDTO>> getAllReclamations() {
-        // Cette méthode peut être implémentée dans le service si nécessaire
         return ResponseEntity.ok(List.of());
     }
 }

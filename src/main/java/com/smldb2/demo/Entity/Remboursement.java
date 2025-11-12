@@ -39,8 +39,9 @@ public class Remboursement {
     @Column(name = "STAT_BS")
     private String statBs;
 
-    @Column(name = "RefBorderau")
-    private String refBorderau;
+
+    @Column(name = "RefBorderau", insertable = false, updatable = false)
+    private String refBordereau;
 
     @Column(name = "Site")
     private String site;
@@ -95,8 +96,21 @@ public class Remboursement {
     public String getStatBs() { return statBs; }
     public void setStatBs(String statBs) { this.statBs = statBs; }
 
-    public String getRefBorderau() { return refBorderau; }
-    public void setRefBorderau(String refBorderau) { this.refBorderau = refBorderau; }
+    public Bordereau getBordereau() {
+        return bordereau;
+    }
+
+    public void setBordereau(Bordereau bordereau) {
+        this.bordereau = bordereau;
+    }
+
+    public String getRefBordereau() {
+        return refBordereau;
+    }
+
+    public void setRefBordereau(String refBordereau) {
+        this.refBordereau = refBordereau;
+    }
 
     public String getSite() { return site; }
     public void setSite(String site) { this.site = site; }
@@ -115,4 +129,10 @@ public class Remboursement {
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
+    @ManyToOne
+    @JoinColumn(name = "RefBorderau", referencedColumnName = "REF_BORDEREAU", insertable = false, updatable = false)
+    @JsonBackReference("bordereau-remboursements")
+    private Bordereau bordereau;
+
 }

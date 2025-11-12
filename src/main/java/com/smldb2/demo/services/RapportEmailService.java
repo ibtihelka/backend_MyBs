@@ -20,7 +20,7 @@ public class RapportEmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    private static final String ADMIN_EMAIL = "ibtihelkadhraoui1@gmail.com";
+    private static final String ADMIN_EMAIL = "ibtihel.kadhraoui@esprit.tn";
 
     public boolean sendRapportEmail(RapportContreVisite rapport, Prestataire prestataire, MultipartFile image) {
         try {

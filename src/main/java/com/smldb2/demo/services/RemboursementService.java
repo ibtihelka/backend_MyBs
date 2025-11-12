@@ -29,6 +29,6 @@ public class RemboursementService {
     }
 
     public List<Remboursement> getRemboursementsByBordereau(String refBordereau) {
-        return remboursementRepository.findByRefBorderau(refBordereau);
+        return remboursementRepository.findByRefBordereau(refBordereau);
     }
 }

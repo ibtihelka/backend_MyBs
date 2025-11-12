@@ -9,9 +9,11 @@ import java.util.Optional;
 
 @Repository
 public interface RemboursementRepository extends JpaRepository<Remboursement, String> {
+
     List<Remboursement> findByPersoId(String persoId);
     List<Remboursement> findByStatBs(String statBs);
-    List<Remboursement> findByRefBorderau(String refBorderau);
+    List<Remboursement> findByRefBordereau(String refBordereau);
+
 
 
     // Trouver un remboursement par refBsPhys
@@ -19,5 +21,6 @@ public interface RemboursementRepository extends JpaRepository<Remboursement, St
 
     // Trouver les remboursements d'un utilisateur avec un statut spécifique
     List<Remboursement> findByPersoIdAndStatBs(String persoId, String statBs);
+
 
 }

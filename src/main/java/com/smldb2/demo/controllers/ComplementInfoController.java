@@ -3,6 +3,7 @@ package com.smldb2.demo.controllers;
 import com.smldb2.demo.DTO.DocumentInfo;
 import com.smldb2.demo.services.EmailService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +21,9 @@ public class ComplementInfoController {
 
     @Autowired
     private EmailService emailService;
+
+    @Value("${app.email.recipient}")
+    private String recipientEmail;
 
     @PostMapping("/send-email-multiple")
     public ResponseEntity<?> sendComplementInfoMultiple(
@@ -49,8 +53,9 @@ public class ComplementInfoController {
                 documents.add(new DocumentInfo(documentTypes[i], files[i]));
             }
 
+
             boolean sent = emailService.sendComplementInfoEmailMultiple(
-                    "ibtihelkadhraoui1@gmail.com",
+                    recipientEmail,
                     userPersoId,
                     userName,
                     userEmail,
@@ -60,7 +65,7 @@ public class ComplementInfoController {
             if (sent) {
                 Map<String, Object> response = new HashMap<>();
                 response.put("success", true);
-                response.put("message", "Documents envoyés avec succès");
+                response.put("message", "Documents envoyés avec succès ");
                 response.put("filesCount", files.length);
                 return ResponseEntity.ok(response);
             } else {

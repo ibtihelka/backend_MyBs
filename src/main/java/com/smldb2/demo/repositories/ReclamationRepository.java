@@ -21,4 +21,6 @@ public interface ReclamationRepository extends JpaRepository<Reclamation, Long> 
 
     // Trouver les réclamations d'un utilisateur par refBsPhys
     List<Reclamation> findByPersoIdAndRefBsPhys(String persoId, String refBsPhys);
+    long countByRefBsPhys(String refBsPhys);
+
 }

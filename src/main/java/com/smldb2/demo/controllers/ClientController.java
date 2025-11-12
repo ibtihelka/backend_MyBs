@@ -2,13 +2,11 @@ package com.smldb2.demo.controllers;
 
 import com.smldb2.demo.services.ClientService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/client")
+@CrossOrigin(origins = "**") // Ajoutez cette ligne
 public class ClientController {
 
     private final ClientService clientService;
@@ -30,4 +28,3 @@ public class ClientController {
         }
     }
 }
-

@@ -13,6 +13,12 @@ public class FamilleService {
     @Autowired
     private FamilleRepository familleRepository;
 
+
+    @Autowired
+    public FamilleService(FamilleRepository familleRepository) {
+        this.familleRepository = familleRepository;
+    }
+
     public List<Famille> getAllFamilles() {
         return familleRepository.findAll();
     }

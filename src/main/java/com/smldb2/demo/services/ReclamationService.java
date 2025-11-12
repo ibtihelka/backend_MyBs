@@ -4,7 +4,6 @@ import com.smldb2.demo.DTO.ReclamationDTO;
 import com.smldb2.demo.Entity.Reclamation;
 import com.smldb2.demo.Entity.Remboursement;
 import com.smldb2.demo.Entity.User;
-
 import com.smldb2.demo.repositories.ReclamationRepository;
 import com.smldb2.demo.repositories.RemboursementRepository;
 import com.smldb2.demo.repositories.UserRepository;
@@ -29,8 +28,12 @@ public class ReclamationService {
     @Autowired
     private UserRepository userRepository;
 
+    // 🔢 LIMITE DE RÉCLAMATIONS PAR REMBOURSEMENT
+    private static final int MAX_RECLAMATIONS_PER_REMBOURSEMENT = 2;
+
     /**
      * Créer une nouvelle réclamation à partir d'un remboursement
+     * ✅ NOUVELLE LOGIQUE : Vérification de la limite de 2 réclamations
      */
     @Transactional
     public ReclamationDTO createReclamation(ReclamationDTO reclamationDTO) {
@@ -47,6 +50,16 @@ public class ReclamationService {
             throw new RuntimeException("Ce remboursement n'appartient pas à cet utilisateur");
         }
 
+        // ✅ NOUVELLE VÉRIFICATION : Compter le nombre de réclamations existantes pour ce remboursement
+        long nombreReclamations = reclamationRepository.countByRefBsPhys(reclamationDTO.getRefBsPhys());
+
+        System.out.println("📊 Nombre de réclamations existantes pour " + reclamationDTO.getRefBsPhys() + ": " + nombreReclamations);
+
+        if (nombreReclamations >= MAX_RECLAMATIONS_PER_REMBOURSEMENT) {
+            throw new RuntimeException("LIMITE_ATTEINTE:Vous avez atteint la limite de " + MAX_RECLAMATIONS_PER_REMBOURSEMENT +
+                    " réclamations pour ce remboursement. Veuillez consulter votre responsable RH.");
+        }
+
         // Vérifier que l'utilisateur existe
         Optional<User> userOpt = userRepository.findById(reclamationDTO.getPersoId());
         if (userOpt.isEmpty()) {
@@ -59,15 +72,32 @@ public class ReclamationService {
         reclamation.setPersoId(reclamationDTO.getPersoId());
         reclamation.setTitreReclamation(reclamationDTO.getTitreReclamation());
         reclamation.setTexteReclamation(reclamationDTO.getTexteReclamation());
-        reclamation.setDateCreation(new Date()); // ✅ Utiliser new Date() pour obtenir l'heure actuelle
-        reclamation.setExported("N"); // Non exporté par défaut
+        reclamation.setDateCreation(new Date());
+        reclamation.setExported("N");
         reclamation.setUser(userOpt.get());
 
         // Sauvegarder la réclamation
         Reclamation savedReclamation = reclamationRepository.save(reclamation);
 
+        System.out.println("✅ Réclamation créée avec succès. Total pour ce BS: " + (nombreReclamations + 1) + "/" + MAX_RECLAMATIONS_PER_REMBOURSEMENT);
+
         // Convertir en DTO pour la réponse
         return convertToDTO(savedReclamation, remboursement);
+    }
+
+    /**
+     * ✅ NOUVELLE MÉTHODE : Vérifier le nombre de réclamations pour un remboursement
+     */
+    public int countReclamationsByRefBsPhys(String refBsPhys) {
+        return (int) reclamationRepository.countByRefBsPhys(refBsPhys);
+    }
+
+    /**
+     * ✅ NOUVELLE MÉTHODE : Vérifier si l'utilisateur peut créer une nouvelle réclamation
+     */
+    public boolean canCreateReclamation(String refBsPhys) {
+        long count = reclamationRepository.countByRefBsPhys(refBsPhys);
+        return count < MAX_RECLAMATIONS_PER_REMBOURSEMENT;
     }
 
     /**

@@ -1,5 +1,6 @@
 package com.smldb2.demo.repositories;
 
+import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.Entity.UsersAdmin;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -15,4 +16,5 @@ public interface UsersAdminRepository extends JpaRepository<UsersAdmin, String> 
 
     List<UsersAdmin> findByType(String type);
     List<UsersAdmin> findBySite(String site);
+    Optional<UsersAdmin> findByPersoId(String persoId);
 }

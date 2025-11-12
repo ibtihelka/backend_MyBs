@@ -28,6 +28,8 @@ public class Prestataire {
 
     @Column(name = "ADRESSE")
     private String adresse;
+    @Column(name = "SEXE")
+    private String sexe;
 
     @Column(name = "date_creation")
     @Temporal(TemporalType.TIMESTAMP)
@@ -65,4 +67,12 @@ public class Prestataire {
 
     public Date getDateCreation() { return dateCreation; }
     public void setDateCreation(Date dateCreation) { this.dateCreation = dateCreation; }
+
+    public String getSexe() {
+        return sexe;
+    }
+
+    public void setSexe(String sexe) {
+        this.sexe = sexe;
+    }
 }

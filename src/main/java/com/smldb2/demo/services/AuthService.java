@@ -4,9 +4,11 @@ import com.smldb2.demo.DTO.UnifiedLoginResponse;
 import com.smldb2.demo.repositories.UserRepository;
 import com.smldb2.demo.repositories.UsersAdminRepository;
 import com.smldb2.demo.repositories.PrestataireRepository;
+import com.smldb2.demo.repositories.UsersSocieteRepository;
 import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.Entity.UsersAdmin;
 import com.smldb2.demo.Entity.Prestataire;
+import com.smldb2.demo.Entity.UsersSociete;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +25,9 @@ public class AuthService {
 
     @Autowired
     private PrestataireRepository prestataireRepository;
+
+    @Autowired
+    private UsersSocieteRepository usersSocieteRepository;
 
     private String md5(String input) {
         try {
@@ -50,6 +55,7 @@ public class AuthService {
                     "USER",
                     user.get(),
                     null,
+                    null,
                     null
             );
         }
@@ -63,6 +69,7 @@ public class AuthService {
                     "ADMIN",
                     null,
                     admin.get(),
+                    null,
                     null
             );
         }
@@ -76,13 +83,29 @@ public class AuthService {
                     "PRESTATAIRE",
                     null,
                     null,
-                    prestataire.get()
+                    prestataire.get(),
+                    null
+            );
+        }
+
+        // Chercher dans userssociete
+        Optional<UsersSociete> usersSociete = usersSocieteRepository.findByPersoIdAndPersoPassed(persoId, hashedPassword);
+        if (usersSociete.isPresent()) {
+            return new UnifiedLoginResponse(
+                    "Login successful",
+                    true,
+                    "SOCIETE",
+                    null,
+                    null,
+                    null,
+                    usersSociete.get()
             );
         }
 
         return new UnifiedLoginResponse(
                 "Invalid credentials",
                 false,
+                null,
                 null,
                 null,
                 null,

@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
-
 @Service
 public class RapportContreVisiteService {
 
@@ -33,180 +32,223 @@ public class RapportContreVisiteService {
     @Autowired
     private ObjectMapper objectMapper;
 
-    // Créer un rapport avec image et envoi par email
-    public Map<String, Object> creerRapportAvecImage(String rapportJson, MultipartFile image) {
+    // Créer un rapport en sélectionnant adhérent + remboursement + bénéficiaire
+    public Map<String, Object> creerRapportPourRemboursement(String prestataireId, String refBsPhys, String beneficiaireNom, MultipartFile image, RapportContreVisite rapport) {
         Map<String, Object> response = new HashMap<>();
-
         try {
-            // Parser le JSON en objet RapportContreVisite
-            RapportContreVisite rapport = objectMapper.readValue(rapportJson, RapportContreVisite.class);
+            Optional<Prestataire> prestataireOpt = prestataireRepository.findById(prestataireId);
+            if (!prestataireOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Prestataire introuvable");
+                return response;
+            }
+            Prestataire prestataire = prestataireOpt.get();
 
-            // Vérifier que le prestataire existe
-            Optional<Prestataire> prestataire = prestataireRepository.findById(rapport.getPrestataireId());
-            if (!prestataire.isPresent()) {
+            Optional<Remboursement> rembOpt = remboursementRepository.findById(refBsPhys);
+            if (!rembOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Bulletin de soins introuvable");
+                return response;
+            }
+            Remboursement remboursement = rembOpt.get();
+            String persoId = remboursement.getPersoId();
+
+            Optional<User> userOpt = userRepository.findById(persoId);
+            if (!userOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Adhérent introuvable");
+                return response;
+            }
+            User user = userOpt.get();
+
+            // Déterminer le type du bénéficiaire
+            String typeBeneficiaire;
+            String nomBeneficiaire;
+
+            if (beneficiaireNom.equalsIgnoreCase(user.getPersoName())) {
+                typeBeneficiaire = "ADHERENT";
+                nomBeneficiaire = user.getPersoName();
+            } else {
+                List<Famille> familles = familleRepository.findByPersoId(persoId);
+                Famille famille = familles.stream()
+                        .filter(f -> f.getPrenomPrestataire().equalsIgnoreCase(beneficiaireNom))
+                        .findFirst()
+                        .orElse(null);
+                if (famille != null) {
+                    typeBeneficiaire = famille.getTypPrestataire().name();
+                    nomBeneficiaire = famille.getPrenomPrestataire();
+                } else {
+                    response.put("success", false);
+                    response.put("message", "Bénéficiaire non trouvé dans la famille de l'adhérent");
+                    return response;
+                }
+            }
+
+            // Remplir le rapport
+            rapport.setPrestataireId(prestataireId);
+            rapport.setRefBsPhys(refBsPhys);
+            rapport.setBeneficiaireId(persoId);
+            rapport.setBeneficiaireNom(nomBeneficiaire);
+            rapport.setTypeBeneficiaire(typeBeneficiaire);
+
+            // Vérification du type de rapport
+            if (!prestataire.getRole().equalsIgnoreCase(rapport.getTypeRapport())) {
+                response.put("success", false);
+                response.put("message", "Le type de rapport doit correspondre au rôle du prestataire");
+                return response;
+            }
+
+            RapportContreVisite saved = rapportRepository.save(rapport);
+
+            if (image != null && !image.isEmpty()) {
+                rapportEmailService.sendRapportEmail(saved, prestataire, image);
+            }
+
+            response.put("success", true);
+            response.put("message", "Rapport créé avec succès");
+            response.put("rapport", saved);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("message", "Erreur: " + e.getMessage());
+        }
+
+        return response;
+    }
+
+    // Récupérer tous les rapports d'un prestataire avec type bénéficiaire lisible
+    public List<Map<String, String>> getRapportsAvecType(String prestataireId) {
+        List<RapportContreVisite> rapports = rapportRepository.findByPrestataireId(prestataireId);
+        List<Map<String, String>> result = new ArrayList<>();
+        for (RapportContreVisite r : rapports) {
+            Map<String, String> map = new HashMap<>();
+            map.put("id", r.getId().toString());
+            map.put("refBsPhys", r.getRefBsPhys());
+            map.put("beneficiaireNom", r.getBeneficiaireNom());
+            map.put("typeBeneficiaire", r.getTypeBeneficiaire().equalsIgnoreCase("ADHERENT") ? "Adhérent" : r.getTypeBeneficiaire());
+            result.add(map);
+        }
+        return result;
+    }
+
+    public List<Remboursement> getRemboursementsByUser(String persoId) {
+        return remboursementRepository.findByPersoId(persoId);
+    }
+
+    public List<User> getAllAdherents() {
+        return userRepository.findAll();
+    }
+
+    public List<Famille> getFamilleByUser(String persoId) {
+        return familleRepository.findByPersoId(persoId);
+    }
+
+    public User getAdherentByMatricule(String matricule) {
+        return userRepository.findByCin(matricule).orElse(null);
+    }
+    public Map<String, Object> creerRapportParMatricule(
+            String matriculeAdherent, String refBsPhys, String prestataireId,
+            MultipartFile image, RapportContreVisite rapport) {
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            Optional<User> userOpt = userRepository.findByCin(matriculeAdherent);
+            if (!userOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Aucun adhérent trouvé avec cette matricule (CIN)");
+                return response;
+            }
+            User user = userOpt.get();
+
+            Optional<Remboursement> rembOpt = remboursementRepository.findById(refBsPhys);
+            if (!rembOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Remboursement introuvable");
+                return response;
+            }
+
+            Optional<Prestataire> prestataireOpt = prestataireRepository.findById(prestataireId);
+            if (!prestataireOpt.isPresent()) {
                 response.put("success", false);
                 response.put("message", "Prestataire introuvable");
                 return response;
             }
 
-            // Vérifier que le bénéficiaire existe et le nom correspond
-            Map<String, Object> validationBenef = validerBeneficiaire(
-                    rapport.getBeneficiaireId(),
-                    rapport.getBeneficiaireNom()
-            );
+            Prestataire prestataire = prestataireOpt.get();
 
-            if (!(boolean) validationBenef.get("valid")) {
+            // Remplissage du rapport
+            rapport.setPrestataireId(prestataireId);
+            rapport.setBeneficiaireId(user.getPersoId());
+            rapport.setBeneficiaireNom(user.getPersoName());
+            rapport.setTypeBeneficiaire("ADHERENT");
+            rapport.setRefBsPhys(refBsPhys);
+            rapport.setDateRapport(new Date());
+
+            if (!prestataire.getRole().equalsIgnoreCase(rapport.getTypeRapport())) {
                 response.put("success", false);
-                response.put("message", validationBenef.get("message"));
+                response.put("message", "Le type de rapport ne correspond pas au rôle du prestataire");
                 return response;
             }
 
-            // Récupérer le type de bénéficiaire validé
-            rapport.setTypeBeneficiaire((String) validationBenef.get("type"));
-
-            // Vérifier que le type de rapport correspond au rôle du prestataire
-            String rolePrestataire = prestataire.get().getRole();
-            String typeRapport = rapport.getTypeRapport();
-
-            if (!rolePrestataire.equalsIgnoreCase(typeRapport)) {
-                response.put("success", false);
-                response.put("message", "Un prestataire " + rolePrestataire + " ne peut créer que des rapports de type " + rolePrestataire);
-                return response;
-            }
-
-            // Validation supplémentaire selon le type
-            if ("DENTISTE".equalsIgnoreCase(typeRapport)) {
-                if (rapport.getLignesDentaire() == null || rapport.getLignesDentaire().isEmpty()) {
-                    response.put("success", false);
-                    response.put("message", "Les lignes dentaires sont obligatoires pour un rapport DENTISTE");
-                    return response;
-                }
-            } else if ("OPTICIEN".equalsIgnoreCase(typeRapport)) {
-                if (rapport.getPrixMonture() == null) {
-                    response.put("success", false);
-                    response.put("message", "Le prix de la monture est obligatoire pour un rapport OPTICIEN");
-                    return response;
-                }
-            }
-
-            // Sauvegarder le rapport
             RapportContreVisite saved = rapportRepository.save(rapport);
 
-            // Envoyer l'email avec l'image si elle existe
+            // Envoi d’un mail s’il y a une image jointe
             if (image != null && !image.isEmpty()) {
-                boolean emailSent = rapportEmailService.sendRapportEmail(saved, prestataire.get(), image);
-
-                if (!emailSent) {
-                    System.out.println("Avertissement : Le rapport a été créé mais l'email n'a pas pu être envoyé");
-                }
+                rapportEmailService.sendRapportEmail(saved, prestataire, image);
             }
 
             response.put("success", true);
-            response.put("message", "Rapport créé avec succès" + (image != null ? " et email envoyé" : ""));
+            response.put("message", "Rapport créé avec succès");
             response.put("rapport", saved);
-            return response;
 
         } catch (Exception e) {
             e.printStackTrace();
             response.put("success", false);
-            response.put("message", "Erreur lors de la création du rapport: " + e.getMessage());
-            return response;
+            response.put("message", "Erreur : " + e.getMessage());
         }
-    }
-    // Créer un rapport sans image (méthode existante pour compatibilité)
-    public Map<String, Object> creerRapport(RapportContreVisite rapport) {
-        // CORRECTION : Convertir l'objet en JSON au lieu d'utiliser toString()
-        try {
-            String rapportJson = objectMapper.writeValueAsString(rapport);
-            return creerRapportAvecImage(rapportJson, null);
-        } catch (Exception e) {
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "Erreur lors de la conversion du rapport en JSON: " + e.getMessage());
-            return response;
-        }
+        return response;
     }
 
-    // Valider le bénéficiaire (User ou Famille)
-    private Map<String, Object> validerBeneficiaire(String beneficiaireId, String beneficiaireNom) {
-        Map<String, Object> result = new HashMap<>();
 
-        // D'abord chercher dans la table User
-        Optional<User> user = userRepository.findById(beneficiaireId);
-        if (user.isPresent()) {
-            // Vérifier si le nom correspond au user lui-même
-            if (user.get().getPersoName().equalsIgnoreCase(beneficiaireNom)) {
-                result.put("valid", true);
-                result.put("type", "USER");
-                result.put("message", "Bénéficiaire valide");
-                return result;
-            }
 
-            // Sinon, vérifier dans sa famille
-            List<Famille> familles = familleRepository.findByPersoId(beneficiaireId);
-            for (Famille f : familles) {
-                if (f.getPrenomPrestataire().equalsIgnoreCase(beneficiaireNom)) {
-                    result.put("valid", true);
-                    result.put("type", "FAMILLE");
-                    result.put("message", "Bénéficiaire valide");
-                    return result;
+    /**
+     * Récupère le bénéficiaire d’un remboursement avec son type.
+     */
+    public Map<String, String> getBeneficiaireParRefBsPhys(String refBsPhys) throws Exception {
+        // 1️⃣ Récupérer le remboursement
+        Remboursement remboursement = remboursementRepository.findById(refBsPhys)
+                .orElseThrow(() -> new Exception("Remboursement introuvable"));
+
+        String persoIdRemb = remboursement.getPersoId();
+        String nomPrenRemb = remboursement.getNomPrenPrest();
+
+        // 2️⃣ Vérifier que l’adhérent existe
+        User user = userRepository.findById(persoIdRemb)
+                .orElseThrow(() -> new Exception("Adhérent introuvable"));
+
+        // 3️⃣ Récupérer les membres de la famille de cet adhérent
+        List<Famille> familles = familleRepository.findByPersoId(persoIdRemb);
+
+        // 4️⃣ Déterminer le type du bénéficiaire
+        String typeBeneficiaire = "ADHERENT"; // valeur par défaut (si ce n’est pas un membre de famille)
+
+        for (Famille f : familles) {
+            if (f.getPersoId() != null && f.getPersoId().equalsIgnoreCase(persoIdRemb)
+                    && f.getPrenomPrestataire() != null
+                    && f.getPrenomPrestataire().trim().equalsIgnoreCase(nomPrenRemb.trim())) {
+
+                if (f.getTypPrestataire() != null) {
+                    typeBeneficiaire = f.getTypPrestataire().name(); // ex: "CONJOINT", "ENFANT"
                 }
-            }
-
-            // Le user existe mais le nom ne correspond ni au user ni à sa famille
-            result.put("valid", false);
-            result.put("message", "Le nom du bénéficiaire ne correspond pas à l'ID fourni");
-            return result;
-        }
-
-        // Le bénéficiaire n'existe pas
-        result.put("valid", false);
-        result.put("message", "Bénéficiaire introuvable avec l'ID: " + beneficiaireId);
-        return result;
-    }
-
-    // Récupérer les bénéficiaires (User + Famille) pour un remboursement
-    public Map<String, Object> getBeneficiaires(String refBsPhys) {
-        Map<String, Object> result = new HashMap<>();
-        List<Map<String, String>> beneficiaires = new ArrayList<>();
-
-        // Trouver le remboursement
-        Optional<Remboursement> remb = remboursementRepository.findById(refBsPhys);
-        if (remb.isPresent()) {
-            String persoId = remb.get().getPersoId();
-
-            // Ajouter le user principal
-            Optional<User> user = userRepository.findById(persoId);
-            if (user.isPresent()) {
-                Map<String, String> ben = new HashMap<>();
-                ben.put("id", user.get().getPersoId());
-                ben.put("nom", user.get().getPersoName());
-                ben.put("type", "USER");
-                beneficiaires.add(ben);
-            }
-
-            // Ajouter les membres de la famille
-            List<Famille> familles = familleRepository.findByPersoId(persoId);
-            for (Famille f : familles) {
-                Map<String, String> ben = new HashMap<>();
-                ben.put("id", f.getPrenomPrestataire());
-                ben.put("nom", f.getPrenomPrestataire());
-                ben.put("type", "FAMILLE");
-                beneficiaires.add(ben);
+                break;
             }
         }
 
-        result.put("beneficiaires", beneficiaires);
-        return result;
-    }
+        // 5️⃣ Construire la réponse
+        Map<String, String> beneficiaireMap = new HashMap<>();
+        beneficiaireMap.put("nom", nomPrenRemb);
+        beneficiaireMap.put("type", typeBeneficiaire);
 
-    // Récupérer tous les rapports d'un prestataire
-    public List<RapportContreVisite> getRapportsParPrestataire(String prestataireId) {
-        return rapportRepository.findByPrestataireId(prestataireId);
-    }
-
-    // Récupérer tous les remboursements disponibles
-    public List<Remboursement> getAllRemboursements() {
-        return remboursementRepository.findAll();
-    }
-}
+        return beneficiaireMap;
+    }  }
