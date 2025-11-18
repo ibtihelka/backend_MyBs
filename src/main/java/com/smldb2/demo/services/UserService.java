@@ -1,16 +1,17 @@
 package com.smldb2.demo.services;
 
 import com.smldb2.demo.DTO.UserDetailedStatsDTO;
-import com.smldb2.demo.repositories.UserRepository;
+import com.smldb2.demo.Entity.Rib;
 import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.DTO.UserStatsDTO;
+import com.smldb2.demo.repositories.RibRepository;
+import com.smldb2.demo.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.security.MessageDigest;
-import java.time.LocalDate;
-import java.time.Period;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -19,13 +20,10 @@ public class UserService {
     @Autowired
     private UserRepository userRepository;
 
-    public List<User> getAllUsers() {
-        return userRepository.findAll();
-    }
+    @Autowired
+    private RibRepository ribRepository;
 
-    public Optional<User> getUserById(String id) {
-        return userRepository.findById(id);
-    }
+
 
     public Optional<User> getUserByName(String name) {
         return userRepository.findByPersoName(name);
@@ -230,80 +228,317 @@ public class UserService {
         return monthlyCount;
     }
 
-    // ========== NOUVELLES MÉTHODES POUR RIB ET CONTACT ==========
+    // ========== GESTION DU RIB - LOGIQUE CORRIGÉE ==========
 
     /**
-     * Récupérer le RIB d'un utilisateur par son persoId
+     * Récupérer le RIB affiché pour l'utilisateur
+     * - Si demande non traitée : affiche le nouveau RIB avec statut "en attente"
+     * - Sinon : affiche le RIB actuel de la table users
      */
-    public String getRibByPersoId(String persoId) {
+    public Map<String, Object> getRibByPersoId(String persoId) {
         try {
-            return userRepository.findRibByPersoId(persoId);
+            Map<String, Object> response = new HashMap<>();
+
+            // 1. Récupérer l'utilisateur
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+            if (!userOpt.isPresent()) {
+                throw new RuntimeException("Utilisateur non trouvé");
+            }
+
+            User user = userOpt.get();
+            String ribActuel = user.getRib();
+
+            // 2. Vérifier s'il existe une demande en attente (EXPORTED = "N")
+            List<Rib> ribsEnAttente = ribRepository.findByPersoIdAndExported(persoId, "N");
+
+            if (!ribsEnAttente.isEmpty()) {
+                // Il y a une demande en attente
+                Rib ribEnAttente = ribsEnAttente.get(0);
+
+                response.put("persoId", persoId);
+                response.put("rib", ribEnAttente.getNouveauRib());
+                response.put("ancienRib", ribEnAttente.getAncienRib());
+                response.put("enAttente", true);
+
+                // Calculer le message selon l'heure de création et l'heure actuelle
+                LocalTime now = LocalTime.now();
+                LocalTime cutoffTime = LocalTime.of(11, 10);
+
+                LocalDateTime creationDateTime = ribEnAttente.getDateCreation()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+
+                LocalTime creationTime = creationDateTime.toLocalTime();
+                LocalDate creationDate = creationDateTime.toLocalDate();
+                LocalDate today = LocalDate.now();
+
+                String message;
+                if (creationDate.equals(today) && creationTime.isBefore(cutoffTime) && now.isBefore(cutoffTime)) {
+                    message = "Votre RIB sera modifié aujourd'hui à 11h10";
+                } else {
+                    message = "Votre RIB sera modifié demain à 11h10";
+                }
+
+                response.put("message", message);
+
+                System.out.println("📋 RIB en attente trouvé pour " + persoId);
+                System.out.println("   Ancien: " + ribEnAttente.getAncienRib());
+                System.out.println("   Nouveau: " + ribEnAttente.getNouveauRib());
+                System.out.println("   Créé à: " + creationTime);
+            } else {
+                // Pas de demande en attente, retourner le RIB actuel
+                response.put("persoId", persoId);
+                response.put("rib", ribActuel != null ? ribActuel : "");
+                response.put("enAttente", false);
+
+                System.out.println("📋 RIB actif retourné pour " + persoId + ": " + ribActuel);
+            }
+
+            return response;
+
         } catch (Exception e) {
             System.err.println("❌ Erreur lors de la récupération du RIB pour " + persoId + ": " + e.getMessage());
-            return null;
+            throw new RuntimeException("Erreur lors de la récupération du RIB", e);
         }
     }
 
     /**
-     * Récupérer le contact d'un utilisateur par son persoId
+     * Demander un changement de RIB
+     * Crée une entrée avec EXPORTED = "N"
+     * L'utilisateur doit ensuite valider (mettre EXPORTED = "Y") avant 10h00
      */
+    @Transactional
+    public Map<String, Object> updateRib(String persoId, String newRib) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+
+            // 1. Vérifier que l'utilisateur existe
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+            if (!userOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Utilisateur non trouvé");
+                return response;
+            }
+
+            User user = userOpt.get();
+            String ancienRib = user.getRib();
+
+            // 2. Vérifier que le nouveau RIB est différent de l'ancien
+            if (newRib.equals(ancienRib)) {
+                response.put("success", false);
+                response.put("message", "Le nouveau RIB est identique à l'ancien");
+                return response;
+            }
+
+            // 3. Vérifier s'il existe déjà une demande en attente
+            List<Rib> demandesExistantes = ribRepository.findByPersoIdAndExported(persoId, "N");
+            if (!demandesExistantes.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Vous avez déjà une demande de changement de RIB en cours");
+                return response;
+            }
+
+            // 4. Créer la demande avec EXPORTED = "N"
+            Rib nouvelleDemandeRib = new Rib();
+            nouvelleDemandeRib.setPersoId(persoId);
+            nouvelleDemandeRib.setAncienRib(ancienRib);
+            nouvelleDemandeRib.setNouveauRib(newRib);
+            nouvelleDemandeRib.setExported("N"); // Par défaut
+            nouvelleDemandeRib.setDateCreation(new Date());
+
+            ribRepository.save(nouvelleDemandeRib);
+
+            // 5. Message selon l'heure
+            LocalTime now = LocalTime.now();
+            LocalTime cutoffTime = LocalTime.of(10, 0);
+
+            String message;
+            if (now.isBefore(cutoffTime)) {
+                message = "Votre demande sera traitée aujourd'hui à 11h10 (pensez à valider avant 11h10)";
+            } else {
+                message = "Votre demande sera traitée demain à 11h10 (pensez à valider avant 11h10)";
+            }
+
+            response.put("success", true);
+            response.put("message", message);
+            response.put("persoId", persoId);
+            response.put("rib", newRib);
+            response.put("enAttente", true);
+
+            System.out.println("✅ Demande RIB créée - EXPORTED='N'");
+            System.out.println("   PersoId: " + persoId);
+            System.out.println("   Heure: " + now);
+
+            return response;
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Erreur lors de la demande");
+            return errorResponse;
+        }
+    }
+
+    /**
+     * ✅ LOGIQUE FINALE CORRIGÉE
+     *
+     * Traiter les demandes de RIB UNIQUEMENT si TOUTES ces conditions sont remplies :
+     * 1. Il est 10h00 ou après (appelé par le scheduler)
+     * 2. EXPORTED = "Y" (demande validée)
+     * 3. La demande a été créée AVANT 10h00 le jour même
+     *
+     * Exemples :
+     * - 11h00 → Changement → EXPORTED='Y' → ❌ Attend demain 10h00
+     * - 09h30 → Changement → EXPORTED='N' à 10h03 → ❌ Pas traité (N)
+     * - 09h50 → Changement → EXPORTED='Y' à 10h00 → ✅ Traité
+     */
+    @Transactional
+    public void traiterDemandesRibEnAttente() {
+        try {
+            System.out.println("========================================");
+            System.out.println("🔄 TRAITEMENT AUTOMATIQUE DES RIBs");
+            System.out.println("🕙 Heure actuelle: " + LocalTime.now());
+            System.out.println("========================================");
+
+            LocalTime cutoffTime = LocalTime.of(11, 10);
+            LocalDateTime now = LocalDateTime.now();
+            LocalDate today = now.toLocalDate();
+
+            // ✅ Récupérer UNIQUEMENT les demandes avec EXPORTED = "Y"
+            List<Rib> demandesValidees = ribRepository.findByExported("Y");
+
+            System.out.println("📋 Demandes trouvées avec EXPORTED='Y': " + demandesValidees.size());
+
+            if (demandesValidees.isEmpty()) {
+                System.out.println("ℹ️ Aucune demande validée (EXPORTED='Y')");
+                return;
+            }
+
+            int compteurTraitees = 0;
+            int compteurIgnorees = 0;
+            int compteurEchecs = 0;
+
+            for (Rib demande : demandesValidees) {
+                try {
+                    System.out.println("----------------------------------------");
+                    System.out.println("   📦 Analyse demande #" + demande.getNumRib());
+                    System.out.println("   👤 PersoId: " + demande.getPersoId());
+                    System.out.println("   🟢 EXPORTED: " + demande.getExported());
+
+                    // Convertir la date de création
+                    LocalDateTime creationDateTime = demande.getDateCreation()
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+
+                    LocalTime creationTime = creationDateTime.toLocalTime();
+                    LocalDate creationDate = creationDateTime.toLocalDate();
+
+                    System.out.println("   📅 Date création: " + creationDate);
+                    System.out.println("   🕐 Heure création: " + creationTime);
+
+                    // ✅ VÉRIFICATION DES 3 CONDITIONS
+
+                    // Condition 1 : Heure actuelle >= 11h10 (déjà vérifiée par le scheduler)
+
+                    // Condition 2 : EXPORTED = "Y" (déjà filtrée dans la requête)
+
+                    // Condition 3 : Demande créée AVANT 11h10 le jour même
+                    boolean creeAvant11h10 = creationDate.equals(today) && creationTime.isBefore(cutoffTime);
+
+                    if (!creeAvant11h10) {
+                        System.out.println("   ⏭️ IGNORÉ - Demande créée après 11h10 ou pas aujourd'hui");
+                        System.out.println("   ℹ️ Sera traitée demain à 11h10");
+                        compteurIgnorees++;
+                        continue;
+                    }
+
+                    // ✅ Toutes les conditions sont remplies, traiter la demande
+                    System.out.println("   ✅ CONDITIONS VALIDÉES - Traitement en cours");
+
+                    Optional<User> userOpt = userRepository.findByPersoId(demande.getPersoId());
+
+                    if (userOpt.isPresent()) {
+                        User user = userOpt.get();
+
+                        System.out.println("   📌 RIB actuel: " + user.getRib());
+                        System.out.println("   ✨ Nouveau RIB: " + demande.getNouveauRib());
+
+                        // Mettre à jour le RIB dans users
+                        user.setRib(demande.getNouveauRib());
+                        userRepository.save(user);
+                        System.out.println("   ✅ RIB mis à jour dans users");
+
+                        // Marquer comme traité en changeant EXPORTED
+                        demande.setExported("PROCESSED"); // Ou supprimer la demande
+                        ribRepository.save(demande);
+                        System.out.println("   ✅ Demande marquée comme traitée");
+
+                        compteurTraitees++;
+
+                    } else {
+                        System.err.println("   ⚠️ Utilisateur non trouvé: " + demande.getPersoId());
+                        compteurEchecs++;
+                    }
+
+                } catch (Exception e) {
+                    System.err.println("   ❌ Erreur: " + e.getMessage());
+                    e.printStackTrace();
+                    compteurEchecs++;
+                }
+            }
+
+            System.out.println("========================================");
+            System.out.println("✅ TRAITEMENT TERMINÉ");
+            System.out.println("   ✔️ Traitées: " + compteurTraitees);
+            System.out.println("   ⏭️ Ignorées (après 11h10): " + compteurIgnorees);
+            System.out.println("   ❌ Échecs: " + compteurEchecs);
+            System.out.println("   📊 Total analysées: " + demandesValidees.size());
+            System.out.println("========================================");
+
+        } catch (Exception e) {
+            System.err.println("❌ ERREUR GLOBALE: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    // ========== AUTRES MÉTHODES (inchangées) ==========
+
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    public Optional<User> getUserById(String id) {
+        return userRepository.findById(id);
+    }
+
     public String getContactByPersoId(String persoId) {
         try {
             return userRepository.findContactByPersoId(persoId);
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la récupération du contact pour " + persoId + ": " + e.getMessage());
+            System.err.println("❌ Erreur contact: " + e.getMessage());
             return null;
         }
     }
 
-    /**
-     * Modifier le RIB d'un utilisateur
-     */
-    public boolean updateRib(String persoId, String newRib) {
-        try {
-            Optional<User> userOpt = userRepository.findByPersoId(persoId);
-
-            if (userOpt.isPresent()) {
-                User user = userOpt.get();
-                user.setRib(newRib);
-                userRepository.save(user);
-                System.out.println("✅ RIB mis à jour avec succès pour " + persoId);
-                return true;
-            } else {
-                System.err.println("❌ Utilisateur non trouvé: " + persoId);
-                return false;
-            }
-        } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la mise à jour du RIB pour " + persoId + ": " + e.getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Modifier le contact d'un utilisateur
-     */
     public boolean updateContact(String persoId, String newContact) {
         try {
             Optional<User> userOpt = userRepository.findByPersoId(persoId);
-
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 user.setContact(newContact);
                 userRepository.save(user);
-                System.out.println("✅ Contact mis à jour avec succès pour " + persoId);
                 return true;
-            } else {
-                System.err.println("❌ Utilisateur non trouvé: " + persoId);
-                return false;
             }
+            return false;
         } catch (Exception e) {
-            System.err.println("❌ Erreur lors de la mise à jour du contact pour " + persoId + ": " + e.getMessage());
+            System.err.println("❌ Erreur: " + e.getMessage());
             return false;
         }
     }
-
-
-
     public List<User> getUsersByCompany(String codeEntreprise) {
         try {
             return userRepository.findByCodeEntreprise(codeEntreprise);
@@ -312,5 +547,4 @@ public class UserService {
             return new ArrayList<>();
         }
     }
-
 }

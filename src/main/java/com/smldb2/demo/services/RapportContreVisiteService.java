@@ -251,4 +251,76 @@ public class RapportContreVisiteService {
         beneficiaireMap.put("type", typeBeneficiaire);
 
         return beneficiaireMap;
-    }  }
+    }
+
+    public List<Map<String, Object>> getRapportsByBeneficiaireId(String beneficiaireId) {
+        List<RapportContreVisite> rapports = rapportRepository.findByBeneficiaireId(beneficiaireId);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (RapportContreVisite rapport : rapports) {
+            Map<String, Object> map = new HashMap<>();
+
+            // 🧩 Informations du rapport
+            map.put("beneficiaireNom", rapport.getBeneficiaireNom());
+            map.put("dateRapport", rapport.getDateRapport());
+            map.put("typeRapport", rapport.getTypeRapport());
+            map.put("refBsPhys", rapport.getRefBsPhys());
+
+            // 🧩 Informations du prestataire
+            Optional<Prestataire> prestataireOpt = prestataireRepository.findById(rapport.getPrestataireId());
+            if (prestataireOpt.isPresent()) {
+                Prestataire p = prestataireOpt.get();
+                map.put("prestataireNom", p.getNom());
+                map.put("prestataireContact", p.getContact());
+                map.put("prestataireAdresse", p.getAdresse());
+                map.put("prestataireMatriculeFiscale", p.getMatriculeFiscale());
+            } else {
+                // Si le prestataire est introuvable
+                map.put("prestataireNom", "Inconnu");
+                map.put("prestataireContact", "");
+                map.put("prestataireAdresse", "");
+                map.put("prestataireMatriculeFiscale", "");
+            }
+
+            result.add(map);
+        }
+
+        return result;
+    }
+
+    public List<Map<String, Object>> getRapportsDetailsByPrestataire(String prestataireId) {
+        List<RapportContreVisite> rapports = rapportRepository.findByPrestataireId(prestataireId);
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (RapportContreVisite rapport : rapports) {
+            Map<String, Object> map = new HashMap<>();
+            try {
+                // Appel de ta fonction existante pour récupérer le type du bénéficiaire
+                Map<String, String> beneficiaireInfo = getBeneficiaireParRefBsPhys(rapport.getRefBsPhys());
+
+                map.put("beneficiaireNom", rapport.getBeneficiaireNom());
+                map.put("dateRapport", rapport.getDateRapport());
+                map.put("refBsPhys", rapport.getRefBsPhys());
+                map.put("observation", rapport.getObservation());
+                map.put("type", beneficiaireInfo.get("type")); // Type obtenu via getBeneficiaireParRefBsPhys
+
+            } catch (Exception e) {
+                // Si erreur dans la récupération du bénéficiaire
+                map.put("beneficiaireNom", rapport.getBeneficiaireNom());
+                map.put("dateRapport", rapport.getDateRapport());
+                map.put("refBsPhys", rapport.getRefBsPhys());
+                map.put("observation", rapport.getObservation());
+                map.put("type", "Inconnu");
+            }
+
+            result.add(map);
+        }
+
+        return result;
+    }
+
+
+
+
+
+}

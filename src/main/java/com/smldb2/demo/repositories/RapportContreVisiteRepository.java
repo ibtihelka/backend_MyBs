@@ -10,6 +10,6 @@ import java.util.List;
 @Repository
 public interface RapportContreVisiteRepository extends JpaRepository<RapportContreVisite, Long> {
     List<RapportContreVisite> findByPrestataireId(String prestataireId);
+   List<RapportContreVisite> findByRefBsPhys(String refBsPhys);
     List<RapportContreVisite> findByBeneficiaireId(String beneficiaireId);
-    List<RapportContreVisite> findByRefBsPhys(String refBsPhys);
 }

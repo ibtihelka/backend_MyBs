@@ -16,7 +16,6 @@ public class PrestataireService {
     @Autowired
     private PrestataireRepository prestataireRepository;
 
-    // Hacher le mot de passe en MD5
     private String md5(String input) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
@@ -31,33 +30,27 @@ public class PrestataireService {
         }
     }
 
-    // Créer un nouveau prestataire
     public Prestataire creerPrestataire(Prestataire prestataire) {
-        // Hacher le mot de passe avant de sauvegarder
         if (prestataire.getPersoPassed() != null) {
             prestataire.setPersoPassed(md5(prestataire.getPersoPassed()));
         }
         return prestataireRepository.save(prestataire);
     }
 
-    // Récupérer tous les prestataires
     public List<Prestataire> getAllPrestataires() {
         return prestataireRepository.findAll();
     }
 
-    // Récupérer un prestataire par ID
     public Optional<Prestataire> getPrestataireById(String persoId) {
         return prestataireRepository.findById(persoId);
     }
 
-    // Récupérer les prestataires par rôle
     public List<Prestataire> getPrestatairesByRole(String role) {
         return prestataireRepository.findAll().stream()
                 .filter(p -> role.equalsIgnoreCase(p.getRole()))
                 .collect(Collectors.toList());
     }
 
-    // Mettre à jour un prestataire
     public Prestataire updatePrestataire(String persoId, Prestataire prestataire) {
         Optional<Prestataire> existing = prestataireRepository.findById(persoId);
         if (existing.isPresent()) {
@@ -68,6 +61,7 @@ public class PrestataireService {
             if (prestataire.getContact() != null) p.setContact(prestataire.getContact());
             if (prestataire.getAdresse() != null) p.setAdresse(prestataire.getAdresse());
             if (prestataire.getSexe() != null) p.setSexe(prestataire.getSexe());
+            if (prestataire.getMatriculeFiscale() != null) p.setMatriculeFiscale(prestataire.getMatriculeFiscale());
             if (prestataire.getPersoPassed() != null) {
                 p.setPersoPassed(md5(prestataire.getPersoPassed()));
             }
@@ -76,7 +70,6 @@ public class PrestataireService {
         return null;
     }
 
-    // Supprimer un prestataire
     public boolean deletePrestataire(String persoId) {
         if (prestataireRepository.existsById(persoId)) {
             prestataireRepository.deleteById(persoId);

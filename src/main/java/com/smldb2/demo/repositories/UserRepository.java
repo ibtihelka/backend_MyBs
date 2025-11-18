@@ -60,4 +60,12 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     boolean existsByEmail(String email);
 
+
+
+
+
+    // Compter le nombre de membres de famille pour un adhérent
+    @Query("SELECT COUNT(f) FROM Famille f WHERE f.persoId = :persoId")
+    Long countFamilleByPersoId(@Param("persoId") String persoId);
+
 }

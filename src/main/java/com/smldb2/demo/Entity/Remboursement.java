@@ -1,6 +1,7 @@
 package com.smldb2.demo.Entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,7 +10,7 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
-
+import java.util.List;
 
 
 @Entity
@@ -67,6 +68,18 @@ public class Remboursement {
     private User user;
 
 
+    // Relation One-to-Many avec Acte
+    @OneToMany(mappedBy = "remboursement", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonManagedReference("remboursement-actes")
+    private List<Acte> actes;
+
+    public List<Acte> getActes() {
+        return actes;
+    }
+
+    public void setActes(List<Acte> actes) {
+        this.actes = actes;
+    }
 
 
 

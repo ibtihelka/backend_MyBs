@@ -175,24 +175,29 @@ public class UserController {
     // ========== ENDPOINTS RIB ==========
 
     /**
-     * Récupérer le RIB d'un utilisateur
+     * Récupérer le RIB actif d'un utilisateur
      * GET /api/users/{persoId}/rib
      */
     @GetMapping("/{persoId}/rib")
-    public ResponseEntity<Map<String, String>> getRibByPersoId(@PathVariable String persoId) {
-        String rib = userService.getRibByPersoId(persoId);
-        if (rib != null) {
-            Map<String, String> response = new HashMap<>();
-            response.put("persoId", persoId);
-            response.put("rib", rib);
+    public ResponseEntity<Map<String, Object>> getRibByPersoId(@PathVariable String persoId) {
+        try {
+            Map<String, Object> response = userService.getRibByPersoId(persoId);
             return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 
     /**
      * Modifier le RIB d'un utilisateur
+     * PUT /api/users/{persoId}/rib
+     * Body: { "rib": "12345678901234567890" }
+     */
+    /**
+     * Modifier le RIB d'un utilisateur avec gestion des horaires
      * PUT /api/users/{persoId}/rib
      * Body: { "rib": "12345678901234567890" }
      */
@@ -219,19 +224,12 @@ public class UserController {
             return ResponseEntity.badRequest().body(errorResponse);
         }
 
-        boolean success = userService.updateRib(persoId, cleanRib);
+        Map<String, Object> response = userService.updateRib(persoId, cleanRib);
 
-        Map<String, Object> response = new HashMap<>();
-        if (success) {
-            response.put("success", true);
-            response.put("message", "RIB mis à jour avec succès");
-            response.put("persoId", persoId);
-            response.put("rib", cleanRib);
+        if ((Boolean) response.getOrDefault("success", false)) {
             return ResponseEntity.ok(response);
         } else {
-            response.put("success", false);
-            response.put("message", "Impossible de mettre à jour le RIB");
-            return ResponseEntity.status(500).body(response);
+            return ResponseEntity.status(400).body(response);
         }
     }
 
@@ -413,5 +411,28 @@ public class UserController {
         }
     }
 
+
+    /**
+     * Endpoint pour traiter manuellement les demandes RIB en attente
+     * POST /api/users/rib/process-pending
+     * (À appeler manuellement ou via scheduler)
+     */
+    @PostMapping("/rib/process-pending")
+    public ResponseEntity<Map<String, Object>> processPendingRibs() {
+        try {
+            userService.traiterDemandesRibEnAttente();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Demandes RIB traitées avec succès");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Erreur lors du traitement : " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
 
 }

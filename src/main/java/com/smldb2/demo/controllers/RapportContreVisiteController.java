@@ -1,5 +1,6 @@
 package com.smldb2.demo.controllers;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smldb2.demo.DTO.RapportCreationRequest;
 import com.smldb2.demo.Entity.Famille;
 import com.smldb2.demo.Entity.RapportContreVisite;
@@ -7,8 +8,10 @@ import com.smldb2.demo.Entity.Remboursement;
 import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.services.RapportContreVisiteService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.*;
 
@@ -19,6 +22,9 @@ public class RapportContreVisiteController {
 
     @Autowired
     private RapportContreVisiteService rapportService;
+
+    @Autowired
+    private ObjectMapper objectMapper; // ✅ Injection de ObjectMapper
 
     // ✅ Consultation des rapports d'un prestataire
     @GetMapping("/prestataire/{prestataireId}")
@@ -111,7 +117,7 @@ public class RapportContreVisiteController {
             List<Famille> familles = rapportService.getFamilleByUser(persoId);
             for (Famille famille : familles) {
                 Map<String, String> familleMap = new HashMap<>();
-                familleMap.put("id", famille.getPrenomPrestataire()); // Utiliser le prénom comme ID
+                familleMap.put("id", famille.getPrenomPrestataire());
                 familleMap.put("nom", famille.getPrenomPrestataire());
                 familleMap.put("type", famille.getTypPrestataire().name());
                 beneficiaires.add(familleMap);
@@ -130,30 +136,51 @@ public class RapportContreVisiteController {
         }
     }
 
-    // ✅ Créer un rapport
-    @PostMapping("/create")
-    public ResponseEntity<Map<String, Object>> creerRapport(@RequestBody RapportCreationRequest request) {
-        System.out.println("✅ Requête reçue : " + request.getMatriculeAdherent());
-        System.out.println("📄 Rapport : " + (request.getRapport() != null ? request.getRapport().getTypeRapport() : "null"));
+    // ✅ Créer un rapport AVEC IMAGE (FormData)
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> creerRapport(
+            @RequestParam("matriculeAdherent") String matriculeAdherent,
+            @RequestParam("refBsPhys") String refBsPhys,
+            @RequestParam("prestataireId") String prestataireId,
+            @RequestPart("rapport") String rapportJson,
+            @RequestPart(value = "image", required = false) MultipartFile image
+    ) {
+        System.out.println("✅ Requête reçue");
+        System.out.println("📄 Matricule : " + matriculeAdherent);
+        System.out.println("📄 RefBsPhys : " + refBsPhys);
+        System.out.println("📄 PrestataireId : " + prestataireId);
+        System.out.println("🖼️ Image : " + (image != null ? image.getOriginalFilename() : "Aucune"));
 
-        Map<String, Object> response = rapportService.creerRapportParMatricule(
-                request.getMatriculeAdherent(),
-                request.getRefBsPhys(),
-                request.getPrestataireId(),
-                null, // pas d'image pour l'instant
-                request.getRapport()
-        );
+        try {
+            // Désérialiser le JSON du rapport
+            RapportContreVisite rapport = objectMapper.readValue(rapportJson, RapportContreVisite.class);
+            System.out.println("📄 Type rapport : " + rapport.getTypeRapport());
 
-        if ((boolean) response.get("success")) {
-            return ResponseEntity.ok(response);
-        } else {
-            return ResponseEntity.badRequest().body(response);
+            // Appel du service avec image
+            Map<String, Object> response = rapportService.creerRapportParMatricule(
+                    matriculeAdherent,
+                    refBsPhys,
+                    prestataireId,
+                    image,
+                    rapport
+            );
+
+            if ((boolean) response.get("success")) {
+                return ResponseEntity.ok(response);
+            } else {
+                return ResponseEntity.badRequest().body(response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Erreur lors de la création du rapport: " + e.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
-
     /**
-     * Récupère le bénéficiaire d’un bulletin de soins par refBsPhys
+     * Récupère le bénéficiaire d'un bulletin de soins par refBsPhys
      */
     @GetMapping("/beneficiaire/{refBsPhys}")
     public ResponseEntity<Map<String, Object>> getBeneficiaire(@PathVariable String refBsPhys) {
@@ -169,4 +196,27 @@ public class RapportContreVisiteController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+
+    @GetMapping("/beneficiaire-id/{beneficiaireId}")
+    public ResponseEntity<List<Map<String, Object>>> getRapportsByBeneficiaireId(@PathVariable String beneficiaireId) {
+        List<Map<String, Object>> rapports = rapportService.getRapportsByBeneficiaireId(beneficiaireId);
+        if (rapports.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(rapports);
+    }
+
+    @GetMapping("/prestataire/details/{prestataireId}")
+    public ResponseEntity<List<Map<String, Object>>> getRapportsDetailsByPrestataire(@PathVariable String prestataireId) {
+        List<Map<String, Object>> rapports = rapportService.getRapportsDetailsByPrestataire(prestataireId);
+        if (rapports.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(rapports);
+    }
+
+
+
+
+
 }

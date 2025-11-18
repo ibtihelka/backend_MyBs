@@ -15,6 +15,12 @@ public class RemboursementController {
     private RemboursementService remboursementService;
 
 
+    @GetMapping("/details/{refBsPhys}")
+    public ResponseEntity<Remboursement> getRemboursementWithActes(@PathVariable String refBsPhys) {
+        return remboursementService.getRemboursementWithActes(refBsPhys)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 
 
 
