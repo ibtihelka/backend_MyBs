@@ -435,4 +435,84 @@ public class UserController {
         }
     }
 
+
+    // ========== ENDPOINTS CONTACT V2 (Logique similaire au RIB) ==========
+
+    /**
+     * Récupérer le contact actif d'un utilisateur avec gestion des demandes en attente
+     * GET /api/users/{persoId}/contact/v2
+     */
+    @GetMapping("/{persoId}/contact/v2")
+    public ResponseEntity<Map<String, Object>> getContactByPersoIdV2(@PathVariable String persoId) {
+        try {
+            Map<String, Object> response = userService.getContactByPersoIdV2(persoId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * Modifier le contact d'un utilisateur avec gestion des horaires (V2)
+     * PUT /api/users/{persoId}/contact/v2
+     * Body: { "contact": "+216 12 345 678" }
+     */
+    @PutMapping("/{persoId}/contact/v2")
+    public ResponseEntity<Map<String, Object>> updateContactV2(
+            @PathVariable String persoId,
+            @RequestBody Map<String, String> request) {
+
+        String newContact = request.get("contact");
+
+        if (newContact == null || newContact.trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Le contact ne peut pas être vide");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        // Validation du format du contact (numéro de téléphone)
+        String cleanContact = newContact.replaceAll("\\s+", "");
+        if (!cleanContact.matches("^\\+?\\d{8,15}$")) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Format de numéro de téléphone invalide");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        Map<String, Object> response = userService.updateContactV2(persoId, newContact);
+
+        if ((Boolean) response.getOrDefault("success", false)) {
+            return ResponseEntity.ok(response);
+        } else {
+            return ResponseEntity.status(400).body(response);
+        }
+    }
+
+    /**
+     * Endpoint pour traiter manuellement les demandes de téléphone en attente
+     * POST /api/users/contact/process-pending
+     * (À appeler manuellement ou via scheduler)
+     */
+    @PostMapping("/contact/process-pending")
+    public ResponseEntity<Map<String, Object>> processPendingContacts() {
+        try {
+            userService.traiterDemandesTelEnAttente();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Demandes de téléphone traitées avec succès");
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Erreur lors du traitement : " + e.getMessage());
+            return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
 }

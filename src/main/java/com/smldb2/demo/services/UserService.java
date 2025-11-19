@@ -2,9 +2,11 @@ package com.smldb2.demo.services;
 
 import com.smldb2.demo.DTO.UserDetailedStatsDTO;
 import com.smldb2.demo.Entity.Rib;
+import com.smldb2.demo.Entity.Tel;
 import com.smldb2.demo.Entity.User;
 import com.smldb2.demo.DTO.UserStatsDTO;
 import com.smldb2.demo.repositories.RibRepository;
+import com.smldb2.demo.repositories.TelRepository;
 import com.smldb2.demo.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,9 @@ public class UserService {
 
     @Autowired
     private RibRepository ribRepository;
+
+    @Autowired
+    private TelRepository telRepository;
 
 
 
@@ -545,6 +550,279 @@ public class UserService {
         } catch (Exception e) {
             System.err.println("❌ Erreur lors de la récupération des utilisateurs de l'entreprise " + codeEntreprise + ": " + e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+
+    // ========== GESTION DU CONTACT/TÉLÉPHONE - LOGIQUE CORRIGÉE ==========
+
+    /**
+     * Récupérer le téléphone affiché pour l'utilisateur
+     * - Si demande non traitée : affiche le nouveau tél avec statut "en attente"
+     * - Sinon : affiche le téléphone actuel de la table users
+     */
+    public Map<String, Object> getContactByPersoIdV2(String persoId) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+
+            // 1. Récupérer l'utilisateur
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+            if (!userOpt.isPresent()) {
+                throw new RuntimeException("Utilisateur non trouvé");
+            }
+
+            User user = userOpt.get();
+            String contactActuel = user.getContact();
+
+            // 2. Vérifier s'il existe une demande en attente (EXPORTED = "N")
+            List<Tel> telsEnAttente = telRepository.findByPersoIdAndExported(persoId, "N");
+
+            if (!telsEnAttente.isEmpty()) {
+                // Il y a une demande en attente
+                Tel telEnAttente = telsEnAttente.get(0);
+
+                response.put("persoId", persoId);
+                response.put("contact", telEnAttente.getNouveauTel());
+                response.put("ancienContact", telEnAttente.getAncienTel());
+                response.put("enAttente", true);
+
+                // Calculer le message selon l'heure de création et l'heure actuelle
+                LocalTime now = LocalTime.now();
+                LocalTime cutoffTime = LocalTime.of(11, 10);
+
+                LocalDateTime creationDateTime = telEnAttente.getDateCreation()
+                        .toInstant()
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalDateTime();
+
+                LocalTime creationTime = creationDateTime.toLocalTime();
+                LocalDate creationDate = creationDateTime.toLocalDate();
+                LocalDate today = LocalDate.now();
+
+                String message;
+                if (creationDate.equals(today) && creationTime.isBefore(cutoffTime) && now.isBefore(cutoffTime)) {
+                    message = "Votre téléphone sera modifié aujourd'hui à 11h10";
+                } else {
+                    message = "Votre téléphone sera modifié demain à 11h10";
+                }
+
+                response.put("message", message);
+
+                System.out.println("📱 Téléphone en attente trouvé pour " + persoId);
+                System.out.println("   Ancien: " + telEnAttente.getAncienTel());
+                System.out.println("   Nouveau: " + telEnAttente.getNouveauTel());
+                System.out.println("   Créé à: " + creationTime);
+            } else {
+                // Pas de demande en attente, retourner le contact actuel
+                response.put("persoId", persoId);
+                response.put("contact", contactActuel != null ? contactActuel : "");
+                response.put("enAttente", false);
+
+                System.out.println("📱 Contact actif retourné pour " + persoId + ": " + contactActuel);
+            }
+
+            return response;
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur lors de la récupération du contact pour " + persoId + ": " + e.getMessage());
+            throw new RuntimeException("Erreur lors de la récupération du contact", e);
+        }
+    }
+
+    /**
+     * Demander un changement de téléphone
+     * Crée une entrée avec EXPORTED = "N"
+     * L'utilisateur doit ensuite valider (mettre EXPORTED = "Y") avant 11h10
+     */
+    @Transactional
+    public Map<String, Object> updateContactV2(String persoId, String newContact) {
+        try {
+            Map<String, Object> response = new HashMap<>();
+
+            // 1. Vérifier que l'utilisateur existe
+            Optional<User> userOpt = userRepository.findByPersoId(persoId);
+            if (!userOpt.isPresent()) {
+                response.put("success", false);
+                response.put("message", "Utilisateur non trouvé");
+                return response;
+            }
+
+            User user = userOpt.get();
+            String ancienContact = user.getContact();
+
+            // 2. Vérifier que le nouveau contact est différent de l'ancien
+            if (newContact.equals(ancienContact)) {
+                response.put("success", false);
+                response.put("message", "Le nouveau téléphone est identique à l'ancien");
+                return response;
+            }
+
+            // 3. Vérifier s'il existe déjà une demande en attente
+            List<Tel> demandesExistantes = telRepository.findByPersoIdAndExported(persoId, "N");
+            if (!demandesExistantes.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Vous avez déjà une demande de changement de téléphone en cours");
+                return response;
+            }
+
+            // 4. Créer la demande avec EXPORTED = "N"
+            Tel nouvelleDemandeTel = new Tel();
+            nouvelleDemandeTel.setPersoId(persoId);
+            nouvelleDemandeTel.setAncienTel(ancienContact);
+            nouvelleDemandeTel.setNouveauTel(newContact);
+            nouvelleDemandeTel.setExported("N"); // Par défaut
+            nouvelleDemandeTel.setDateCreation(new Date());
+
+            telRepository.save(nouvelleDemandeTel);
+
+            // 5. Message selon l'heure
+            LocalTime now = LocalTime.now();
+            LocalTime cutoffTime = LocalTime.of(11, 10);
+
+            String message;
+            if (now.isBefore(cutoffTime)) {
+                message = "Votre demande sera traitée aujourd'hui à 11h10 (pensez à valider avant 11h10)";
+            } else {
+                message = "Votre demande sera traitée demain à 11h10 (pensez à valider avant 11h10)";
+            }
+
+            response.put("success", true);
+            response.put("message", message);
+            response.put("persoId", persoId);
+            response.put("contact", newContact);
+            response.put("enAttente", true);
+
+            System.out.println("✅ Demande téléphone créée - EXPORTED='N'");
+            System.out.println("   PersoId: " + persoId);
+            System.out.println("   Heure: " + now);
+
+            return response;
+
+        } catch (Exception e) {
+            System.err.println("❌ Erreur: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("success", false);
+            errorResponse.put("message", "Erreur lors de la demande");
+            return errorResponse;
+        }
+    }
+
+    /**
+     * ✅ LOGIQUE FINALE CORRIGÉE
+     *
+     * Traiter les demandes de téléphone UNIQUEMENT si TOUTES ces conditions sont remplies :
+     * 1. Il est 11h10 ou après (appelé par le scheduler)
+     * 2. EXPORTED = "Y" (demande validée)
+     * 3. La demande a été créée AVANT 11h10 le jour même
+     */
+    @Transactional
+    public void traiterDemandesTelEnAttente() {
+        try {
+            System.out.println("========================================");
+            System.out.println("📱 TRAITEMENT AUTOMATIQUE DES TÉLÉPHONES");
+            System.out.println("🕙 Heure actuelle: " + LocalTime.now());
+            System.out.println("========================================");
+
+            LocalTime cutoffTime = LocalTime.of(11, 10);
+            LocalDateTime now = LocalDateTime.now();
+            LocalDate today = now.toLocalDate();
+
+            // ✅ Récupérer UNIQUEMENT les demandes avec EXPORTED = "Y"
+            List<Tel> demandesValidees = telRepository.findByExported("Y");
+
+            System.out.println("📋 Demandes trouvées avec EXPORTED='Y': " + demandesValidees.size());
+
+            if (demandesValidees.isEmpty()) {
+                System.out.println("ℹ️ Aucune demande validée (EXPORTED='Y')");
+                return;
+            }
+
+            int compteurTraitees = 0;
+            int compteurIgnorees = 0;
+            int compteurEchecs = 0;
+
+            for (Tel demande : demandesValidees) {
+                try {
+                    System.out.println("----------------------------------------");
+                    System.out.println("   📦 Analyse demande #" + demande.getNumTel());
+                    System.out.println("   👤 PersoId: " + demande.getPersoId());
+                    System.out.println("   🟢 EXPORTED: " + demande.getExported());
+
+                    // Convertir la date de création
+                    LocalDateTime creationDateTime = demande.getDateCreation()
+                            .toInstant()
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDateTime();
+
+                    LocalTime creationTime = creationDateTime.toLocalTime();
+                    LocalDate creationDate = creationDateTime.toLocalDate();
+
+                    System.out.println("   📅 Date création: " + creationDate);
+                    System.out.println("   🕐 Heure création: " + creationTime);
+
+                    // ✅ VÉRIFICATION DES 3 CONDITIONS
+
+                    // Condition 1 : Heure actuelle >= 11h10 (déjà vérifiée par le scheduler)
+
+                    // Condition 2 : EXPORTED = "Y" (déjà filtrée dans la requête)
+
+                    // Condition 3 : Demande créée AVANT 11h10 le jour même
+                    boolean creeAvant11h10 = creationDate.equals(today) && creationTime.isBefore(cutoffTime);
+
+                    if (!creeAvant11h10) {
+                        System.out.println("   ⏭️ IGNORÉ - Demande créée après 11h10 ou pas aujourd'hui");
+                        System.out.println("   ℹ️ Sera traitée demain à 11h10");
+                        compteurIgnorees++;
+                        continue;
+                    }
+
+                    // ✅ Toutes les conditions sont remplies, traiter la demande
+                    System.out.println("   ✅ CONDITIONS VALIDÉES - Traitement en cours");
+
+                    Optional<User> userOpt = userRepository.findByPersoId(demande.getPersoId());
+
+                    if (userOpt.isPresent()) {
+                        User user = userOpt.get();
+
+                        System.out.println("   📌 Contact actuel: " + user.getContact());
+                        System.out.println("   ✨ Nouveau contact: " + demande.getNouveauTel());
+
+                        // Mettre à jour le contact dans users
+                        user.setContact(demande.getNouveauTel());
+                        userRepository.save(user);
+                        System.out.println("   ✅ Contact mis à jour dans users");
+
+                        // Marquer comme traité en changeant EXPORTED
+                        demande.setExported("PROCESSED");
+                        telRepository.save(demande);
+                        System.out.println("   ✅ Demande marquée comme traitée");
+
+                        compteurTraitees++;
+
+                    } else {
+                        System.err.println("   ⚠️ Utilisateur non trouvé: " + demande.getPersoId());
+                        compteurEchecs++;
+                    }
+
+                } catch (Exception e) {
+                    System.err.println("   ❌ Erreur: " + e.getMessage());
+                    e.printStackTrace();
+                    compteurEchecs++;
+                }
+            }
+
+            System.out.println("========================================");
+            System.out.println("✅ TRAITEMENT TERMINÉ");
+            System.out.println("   ✔️ Traitées: " + compteurTraitees);
+            System.out.println("   ⏭️ Ignorées (après 11h10): " + compteurIgnorees);
+            System.out.println("   ❌ Échecs: " + compteurEchecs);
+            System.out.println("   📊 Total analysées: " + demandesValidees.size());
+            System.out.println("========================================");
+
+        } catch (Exception e) {
+            System.err.println("❌ ERREUR GLOBALE: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

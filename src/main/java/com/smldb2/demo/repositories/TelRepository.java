@@ -8,6 +8,9 @@ import java.util.List;
 
 @Repository
 public interface TelRepository extends JpaRepository<Tel, Integer> {
+
     List<Tel> findByPersoId(String persoId);
     List<Tel> findByExported(String exported);
+    List<Tel> findByPersoIdAndExported(String persoId, String exported);
+
 }
