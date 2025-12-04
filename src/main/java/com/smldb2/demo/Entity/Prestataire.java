@@ -20,6 +20,10 @@ public class Prestataire {
     @Column(name = "ROLE")
     private String role; // "DENTISTE" ou "OPTICIEN"
 
+    // ✅ AJOUT DU CHAMP COD_DOC
+    @Column(name = "COD_DOC")
+    private String codDoc;
+
     @Column(name = "EMAIL")
     private String email;
 
@@ -32,8 +36,7 @@ public class Prestataire {
     @Column(name = "SEXE")
     private String sexe;
 
-    @Column(name = "MATRICULE_FISCALE")
-    private String matriculeFiscale;
+
 
     @Column(name = "date_creation")
     @Temporal(TemporalType.TIMESTAMP)
@@ -46,7 +49,7 @@ public class Prestataire {
 
     public Prestataire() {}
 
-    // --- Getters et Setters ---
+    // --- GETTERS & SETTERS ---
     public String getPersoId() { return persoId; }
     public void setPersoId(String persoId) { this.persoId = persoId; }
 
@@ -58,6 +61,9 @@ public class Prestataire {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getCodDoc() { return codDoc; }
+    public void setCodDoc(String codDoc) { this.codDoc = codDoc; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
@@ -71,8 +77,6 @@ public class Prestataire {
     public String getSexe() { return sexe; }
     public void setSexe(String sexe) { this.sexe = sexe; }
 
-    public String getMatriculeFiscale() { return matriculeFiscale; }
-    public void setMatriculeFiscale(String matriculeFiscale) { this.matriculeFiscale = matriculeFiscale; }
 
     public Date getDateCreation() { return dateCreation; }
     public void setDateCreation(Date dateCreation) { this.dateCreation = dateCreation; }

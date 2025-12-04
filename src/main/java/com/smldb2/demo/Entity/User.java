@@ -67,29 +67,13 @@ public class User {
     @Column(name = "Token")
     private String token;
 
-
-
     @Column(name = "date_creation")
     @Temporal(TemporalType.TIMESTAMP)
     private Date dateCreation;
 
-    // Getter et Setter
-    public Date getDateCreation() {
-        return dateCreation;
-    }
-
-    public void setDateCreation(Date dateCreation) {
-        this.dateCreation = dateCreation;
-    }
-
-    // Optionnel : Auto-set date de création
-    @PrePersist
-    protected void onCreate() {
-        dateCreation = new Date();
-    }
-
-    // Relations
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    // ⭐ MODIFICATION : Ajouter fetch = LAZY et optional = true
+    @OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.MERGE},
+            fetch = FetchType.LAZY, orphanRemoval = false)
     @JsonManagedReference("user-familles")
     private List<Famille> familles = new ArrayList<>();
 
@@ -105,13 +89,18 @@ public class User {
     @JsonManagedReference("user-reclamations")
     private List<Reclamation> reclamations = new ArrayList<>();
 
-
-
-
     // Constructeurs
     public User() {}
 
-    // Getters et Setters (tous les anciens + le nouveau)
+    @PrePersist
+    protected void onCreate() {
+        dateCreation = new Date();
+    }
+
+    // Getters et Setters
+    public Date getDateCreation() { return dateCreation; }
+    public void setDateCreation(Date dateCreation) { this.dateCreation = dateCreation; }
+
     public String getPersoId() { return persoId; }
     public void setPersoId(String persoId) { this.persoId = persoId; }
 
@@ -162,7 +151,6 @@ public class User {
 
     public String getToken() { return token; }
     public void setToken(String token) { this.token = token; }
-
 
     public List<Remboursement> getRemboursements() { return remboursements; }
     public void setRemboursements(List<Remboursement> remboursements) { this.remboursements = remboursements; }

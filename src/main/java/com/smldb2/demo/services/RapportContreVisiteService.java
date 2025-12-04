@@ -273,7 +273,7 @@ public class RapportContreVisiteService {
                 map.put("prestataireNom", p.getNom());
                 map.put("prestataireContact", p.getContact());
                 map.put("prestataireAdresse", p.getAdresse());
-                map.put("prestataireMatriculeFiscale", p.getMatriculeFiscale());
+                map.put("prestataireMatriculeFiscale", p.getCodDoc());
             } else {
                 // Si le prestataire est introuvable
                 map.put("prestataireNom", "Inconnu");

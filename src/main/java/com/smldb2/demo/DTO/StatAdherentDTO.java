@@ -1,11 +1,11 @@
 package com.smldb2.demo.DTO;
 
-
 import java.math.BigDecimal;
 
 public class StatAdherentDTO {
     private String matricule;
-    private String nomAdherent;
+    private String nomAdherent;  // Vient de remboursement.adheren
+    private String rang;          // NOUVEAU: Vient de remboursement.rang
     private Integer nombreFamille;
     private BigDecimal depense;
     private BigDecimal rembourse;
@@ -16,12 +16,14 @@ public class StatAdherentDTO {
 
     public StatAdherentDTO() {}
 
-    public StatAdherentDTO(String matricule, String nomAdherent, Integer nombreFamille,
-                           BigDecimal depense, BigDecimal rembourse,
-                           BigDecimal difference, Double pourcentageRemboursement,
-                           Long nombreActes, BigDecimal plafondGlobal) {
+    public StatAdherentDTO(String matricule, String nomAdherent, String rang,
+                           Integer nombreFamille, BigDecimal depense,
+                           BigDecimal rembourse, BigDecimal difference,
+                           Double pourcentageRemboursement, Long nombreActes,
+                           BigDecimal plafondGlobal) {
         this.matricule = matricule;
         this.nomAdherent = nomAdherent;
+        this.rang = rang;
         this.nombreFamille = nombreFamille;
         this.depense = depense;
         this.rembourse = rembourse;
@@ -31,75 +33,36 @@ public class StatAdherentDTO {
         this.plafondGlobal = plafondGlobal;
     }
 
-    public String getMatricule() {
-        return matricule;
-    }
+    // Getters et Setters
+    public String getMatricule() { return matricule; }
+    public void setMatricule(String matricule) { this.matricule = matricule; }
 
-    public void setMatricule(String matricule) {
-        this.matricule = matricule;
-    }
+    public String getNomAdherent() { return nomAdherent; }
+    public void setNomAdherent(String nomAdherent) { this.nomAdherent = nomAdherent; }
 
-    public String getNomAdherent() {
-        return nomAdherent;
-    }
+    public String getRang() { return rang; }
+    public void setRang(String rang) { this.rang = rang; }
 
-    public void setNomAdherent(String nomAdherent) {
-        this.nomAdherent = nomAdherent;
-    }
+    public Integer getNombreFamille() { return nombreFamille; }
+    public void setNombreFamille(Integer nombreFamille) { this.nombreFamille = nombreFamille; }
 
-    public Integer getNombreFamille() {
-        return nombreFamille;
-    }
+    public BigDecimal getDepense() { return depense; }
+    public void setDepense(BigDecimal depense) { this.depense = depense; }
 
-    public void setNombreFamille(Integer nombreFamille) {
-        this.nombreFamille = nombreFamille;
-    }
+    public BigDecimal getRembourse() { return rembourse; }
+    public void setRembourse(BigDecimal rembourse) { this.rembourse = rembourse; }
 
-    public BigDecimal getDepense() {
-        return depense;
-    }
+    public BigDecimal getDifference() { return difference; }
+    public void setDifference(BigDecimal difference) { this.difference = difference; }
 
-    public void setDepense(BigDecimal depense) {
-        this.depense = depense;
-    }
-
-    public BigDecimal getRembourse() {
-        return rembourse;
-    }
-
-    public void setRembourse(BigDecimal rembourse) {
-        this.rembourse = rembourse;
-    }
-
-    public BigDecimal getDifference() {
-        return difference;
-    }
-
-    public void setDifference(BigDecimal difference) {
-        this.difference = difference;
-    }
-
-    public Double getPourcentageRemboursement() {
-        return pourcentageRemboursement;
-    }
-
+    public Double getPourcentageRemboursement() { return pourcentageRemboursement; }
     public void setPourcentageRemboursement(Double pourcentageRemboursement) {
         this.pourcentageRemboursement = pourcentageRemboursement;
     }
 
-    public Long getNombreActes() {
-        return nombreActes;
-    }
+    public Long getNombreActes() { return nombreActes; }
+    public void setNombreActes(Long nombreActes) { this.nombreActes = nombreActes; }
 
-    public void setNombreActes(Long nombreActes) {
-        this.nombreActes = nombreActes;
-    }
-
-    public BigDecimal getPlafondGlobal() {
-        return plafondGlobal;
-    }
-
-    public void setPlafondGlobal(BigDecimal plafondGlobal) {
-        this.plafondGlobal = plafondGlobal;
-    }
+    public BigDecimal getPlafondGlobal() { return plafondGlobal; }
+    public void setPlafondGlobal(BigDecimal plafondGlobal) { this.plafondGlobal = plafondGlobal; }
 }

@@ -1,7 +1,6 @@
 package com.smldb2.demo.Entity;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -31,11 +30,26 @@ public class StatActDate {
     @Column(name = "matricule")
     private String matricule;
 
+    // NOUVELLES COLONNES
+    @Column(name = "MF")
+    private String mf;
+
+    @Column(name = "COD_ACT")
+    private String codAct;
+
+    @Column(name = "COD_DOCT_ACT")
+    private String codDoctAct;
+
+    // NOUVELLE COLONNE NUM_BS
+    @Column(name = "NUM_BS")
+    private String numBs;
+
     // Constructeurs
     public StatActDate() {}
 
     public StatActDate(Long id, LocalDate dateBs, String codeSociete, String acte,
-                       BigDecimal depense, BigDecimal rembourse, String matricule) {
+                       BigDecimal depense, BigDecimal rembourse, String matricule,
+                       String mf, String codAct, String codDoctAct, String numBs) {
         this.id = id;
         this.dateBs = dateBs;
         this.codeSociete = codeSociete;
@@ -43,62 +57,43 @@ public class StatActDate {
         this.depense = depense;
         this.rembourse = rembourse;
         this.matricule = matricule;
+        this.mf = mf;
+        this.codAct = codAct;
+        this.codDoctAct = codDoctAct;
+        this.numBs = numBs;
     }
 
     // Getters et Setters
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public LocalDate getDateBs() { return dateBs; }
+    public void setDateBs(LocalDate dateBs) { this.dateBs = dateBs; }
 
-    public LocalDate getDateBs() {
-        return dateBs;
-    }
+    public String getCodeSociete() { return codeSociete; }
+    public void setCodeSociete(String codeSociete) { this.codeSociete = codeSociete; }
 
-    public void setDateBs(LocalDate dateBs) {
-        this.dateBs = dateBs;
-    }
+    public String getActe() { return acte; }
+    public void setActe(String acte) { this.acte = acte; }
 
-    public String getCodeSociete() {
-        return codeSociete;
-    }
+    public BigDecimal getDepense() { return depense; }
+    public void setDepense(BigDecimal depense) { this.depense = depense; }
 
-    public void setCodeSociete(String codeSociete) {
-        this.codeSociete = codeSociete;
-    }
+    public BigDecimal getRembourse() { return rembourse; }
+    public void setRembourse(BigDecimal rembourse) { this.rembourse = rembourse; }
 
-    public String getActe() {
-        return acte;
-    }
+    public String getMatricule() { return matricule; }
+    public void setMatricule(String matricule) { this.matricule = matricule; }
 
-    public void setActe(String acte) {
-        this.acte = acte;
-    }
+    public String getMf() { return mf; }
+    public void setMf(String mf) { this.mf = mf; }
 
-    public BigDecimal getDepense() {
-        return depense;
-    }
+    public String getCodAct() { return codAct; }
+    public void setCodAct(String codAct) { this.codAct = codAct; }
 
-    public void setDepense(BigDecimal depense) {
-        this.depense = depense;
-    }
+    public String getCodDoctAct() { return codDoctAct; }
+    public void setCodDoctAct(String codDoctAct) { this.codDoctAct = codDoctAct; }
 
-    public BigDecimal getRembourse() {
-        return rembourse;
-    }
-
-    public void setRembourse(BigDecimal rembourse) {
-        this.rembourse = rembourse;
-    }
-
-    public String getMatricule() {
-        return matricule;
-    }
-
-    public void setMatricule(String matricule) {
-        this.matricule = matricule;
-    }
+    public String getNumBs() { return numBs; }
+    public void setNumBs(String numBs) { this.numBs = numBs; }
 }

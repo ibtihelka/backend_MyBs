@@ -9,7 +9,7 @@ import java.time.LocalDate;
 import java.util.Date;
 
 
-// 10. Entité Reclamation
+
 @Entity
 @Table(name = "reclamations")
 public class Reclamation {

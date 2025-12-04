@@ -3,27 +3,20 @@ package com.smldb2.demo.Entity;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
-
 
 @Entity
 @Table(name = "remboursement")
 public class Remboursement {
+
     @Id
     @Column(name = "REF_BS_PHYS")
     private String refBsPhys;
 
-
-
     @Column(name = "PERSO_ID", insertable = false, updatable = false)
-    private String persoId;  // simple lecture, pas de doublon
+    private String persoId;
 
     @Column(name = "NOM_PREN_PREST")
     private String nomPrenPrest;
@@ -39,7 +32,6 @@ public class Remboursement {
 
     @Column(name = "STAT_BS")
     private String statBs;
-
 
     @Column(name = "RefBorderau", insertable = false, updatable = false)
     private String refBordereau;
@@ -59,35 +51,48 @@ public class Remboursement {
     @Column(name = "DateBordereau")
     private Date dateBordereau;
 
+    @Column(name = "COD_DOCT_CV")
+    private String codDoctCv;
 
+    // 👉 NOUVEAU CHAMP AJOUTÉ
+    @Column(name = "PROVISION")
+    private BigDecimal provision;
 
-    // Relation avec User
+    // NOUVELLES COLONNES
+    @Column(name = "MAT")
+    private String mat;
+
+    @Column(name = "RANG")
+    private String rang;
+
+    @Column(name = "ADHEREN")
+    private String adheren;
+
+    @Column(name = "NUM_BORD")
+    private String numBord;
+
+    @Column(name = "RIB")
+    private String rib;
+
+    // Relations
     @ManyToOne
     @JoinColumn(name = "PERSO_ID")
     @JsonBackReference("user-remboursements")
     private User user;
 
-
-    // Relation One-to-Many avec Acte
     @OneToMany(mappedBy = "remboursement", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference("remboursement-actes")
     private List<Acte> actes;
 
-    public List<Acte> getActes() {
-        return actes;
-    }
+    @ManyToOne
+    @JoinColumn(name = "RefBorderau", referencedColumnName = "REF_BORDEREAU", insertable = false, updatable = false)
+    @JsonBackReference("bordereau-remboursements")
+    private Bordereau bordereau;
 
-    public void setActes(List<Acte> actes) {
-        this.actes = actes;
-    }
-
-
-
-
-    // Constructeurs
     public Remboursement() {}
 
-    // Getters et Setters
+    // --- GETTERS & SETTERS ---
+
     public String getRefBsPhys() { return refBsPhys; }
     public void setRefBsPhys(String refBsPhys) { this.refBsPhys = refBsPhys; }
 
@@ -109,21 +114,8 @@ public class Remboursement {
     public String getStatBs() { return statBs; }
     public void setStatBs(String statBs) { this.statBs = statBs; }
 
-    public Bordereau getBordereau() {
-        return bordereau;
-    }
-
-    public void setBordereau(Bordereau bordereau) {
-        this.bordereau = bordereau;
-    }
-
-    public String getRefBordereau() {
-        return refBordereau;
-    }
-
-    public void setRefBordereau(String refBordereau) {
-        this.refBordereau = refBordereau;
-    }
+    public String getRefBordereau() { return refBordereau; }
+    public void setRefBordereau(String refBordereau) { this.refBordereau = refBordereau; }
 
     public String getSite() { return site; }
     public void setSite(String site) { this.site = site; }
@@ -140,12 +132,33 @@ public class Remboursement {
     public Date getDateBordereau() { return dateBordereau; }
     public void setDateBordereau(Date dateBordereau) { this.dateBordereau = dateBordereau; }
 
+    public String getCodDoctCv() { return codDoctCv; }
+    public void setCodDoctCv(String codDoctCv) { this.codDoctCv = codDoctCv; }
+
+    public BigDecimal getProvision() { return provision; }
+    public void setProvision(BigDecimal provision) { this.provision = provision; }
+
+    public String getMat() { return mat; }
+    public void setMat(String mat) { this.mat = mat; }
+
+    public String getRang() { return rang; }
+    public void setRang(String rang) { this.rang = rang; }
+
+    public String getAdheren() { return adheren; }
+    public void setAdheren(String adheren) { this.adheren = adheren; }
+
+    public String getNumBord() { return numBord; }
+    public void setNumBord(String numBord) { this.numBord = numBord; }
+
+    public String getRib() { return rib; }
+    public void setRib(String rib) { this.rib = rib; }
+
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 
-    @ManyToOne
-    @JoinColumn(name = "RefBorderau", referencedColumnName = "REF_BORDEREAU", insertable = false, updatable = false)
-    @JsonBackReference("bordereau-remboursements")
-    private Bordereau bordereau;
+    public List<Acte> getActes() { return actes; }
+    public void setActes(List<Acte> actes) { this.actes = actes; }
 
+    public Bordereau getBordereau() { return bordereau; }
+    public void setBordereau(Bordereau bordereau) { this.bordereau = bordereau; }
 }
